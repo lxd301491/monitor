@@ -1,19 +1,20 @@
 const nodeResolve = require('rollup-plugin-node-resolve');
 const typescript = require('rollup-plugin-typescript2');
-const babel = require('rollup-plugin-babel');
+// const babel = require('rollup-plugin-babel');
 const rollup = require('rollup');
 
 // see below for details on the options
 const inputOptions = {
   input: 'src/index.ts',
   plugins: [
-    nodeResolve(),
     typescript({
       tsconfig: "tsconfig.json"
     }),
-    babel({
-      exclude: 'node_modules/**'
-    })
+    nodeResolve(),
+    // babel({
+    //   runtimeHelpers: true,
+    //   exclude: 'node_modules/**'
+    // })
 	]
 
 };

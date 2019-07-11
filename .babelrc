@@ -1,9 +1,11 @@
 {
   "presets": [
-    ["latest", {
-      "es2015": {
-        "modules": false
-      }
+    ["@babel/preset-typescript", {
+      "targets": {
+        "browsers": ["last 2 versions", "safari >= 7"],
+        "node": "6.10"
+      },
+      "modules": false
     }]
   ],
   "plugins": ["external-helpers"]
