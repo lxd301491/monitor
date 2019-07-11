@@ -1,91 +1,40 @@
 import { AbstractConsumer } from './AbstractConsumer';
+import { VariableExp } from './VariableExp';
+import { MonitorCenter } from './MonitorCenter';
 
 export class MonitorProvider {
-  consumer: AbstractConsumer;
-  oAttrs: object[] = [];
-  pauseKeys: string[] = [];
-  eAttrs: object[] = [];
-  isRunning: boolean = false;
+  handler: string = Math.random().toString(36).substring(2);
+  /**
+   * 静态数据，添加后每个生成的埋点都会携带，除非主动发生改变
+   */
+  eternals: object = {};
+  storage: any;
+  length: number = 10;
+  center: MonitorCenter | undefined;
 
-  mergeOriginalAttributes (attrs, limits, replace = false) {
-    let _attrs = {};
-    for (let key in attrs) {
-      _attrs[key] = new VariableExp(attrs[key], limits && limits[key]);
+  constructor (storage: any, length: number) {
+    if (typeof storage.setItem === 'function' && typeof storage.getItem === 'function') {
+      this.storage = storage;
     }
-    if (replace) {
-      this.oAttrs = _attrs;
-    } else {
-      this.oAttrs = {
-        ...this.oAttrs,
-        ..._attrs
-      };
+    this.length = length || 0;
+  }
+
+  async mergeEternals (obj: object) {
+    let tempObj = {};
+    for (const key: (keyof any) in obj) {
+      tempObj[key] = await VariableExp.toStringStatic(obj[key]);
     }
-
-    return this;
+    
   }
 
-  pauseOriginalAttributes (keys) {
-    this.pauseKeys = keys;
-    return this;
-  }
-
-  continueOriginalAttributes (keys) {
-    this.pauseKeys = this.pauseKeys.filter(item => {
-      return !keys.includes(item);
-    });
-    return this;
-  }
-
-  removeOriginalAttributes (keys) {
-    if (Object.prototype.toString.call(keys) === '[object Array]') {
-      keys.forEach(key => {
-        delete this.oAttrs[key];
-      });
-    } else {
-      delete this.oAttrs[keys];
+  mounte (center: MonitorCenter): string {
+    if (!center) {
+      this.center = center;
     }
-    return this;
+    return this.handler;
   }
 
-  start () {
-    this.isRunning = true;
-  }
+  push(params: object | Promise<object> | Function) {
 
-  pause () {
-    this.isRunning = false;
-  }
-
-  mounte (consumer) {
-    if (!(consumer && consumer instanceof AbstractConsumer)) {
-      console.log('[MonitorProducer::mounte] mounte consumer failed, the type of consumer is not AbstractConsumer');
-      return this;
-    }
-    this.consumer = consumer;
-    this.consumer.mounted(this);
-    return this;
-  }
-
-  unmounte (consumer) {
-    if (this.consumer === consumer) {
-      this.consumer = null;
-      consumer.unmounted();
-    }
-    return this;
-  }
-
-  notify () {
-    if (!this.consumer) return;
-    while (this.eAttrs.length > 0) {
-      this.consumer.consume();
-    }
-  }
-
-  push (params, limits) {
-    let _attrs = {};
-    for (let key in params) {
-      _attrs[key] = new VariableExp(params[key], limits && limits[key]);
-    }
-    this.eAttrs.push(_attrs);
-    this.notify();
   }
 }

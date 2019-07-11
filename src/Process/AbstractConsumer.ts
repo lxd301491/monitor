@@ -1,7 +1,7 @@
 import { MonitorProvider } from './MonitorProvider';
 
 export class AbstractConsumer {
-  provider: MonitorProvider = new MonitorProvider();
+  provider: MonitorProvider | undefined;
 
   mounted (provider: MonitorProvider) {
     this.provider = provider;
@@ -9,7 +9,7 @@ export class AbstractConsumer {
   }
 
   unmounted () {
-    this.provider = new MonitorProvider();
+    this.provider = undefined;
     return this;
   }
 }
