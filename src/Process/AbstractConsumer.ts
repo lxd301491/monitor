@@ -1,15 +1,11 @@
-import { MonitorProvider } from './MonitorProvider';
+import { MonitorProvider } from "./MonitorProvider";
 
 export class AbstractConsumer {
-  provider: MonitorProvider | undefined;
+  handler: string = "";
 
-  mounted (provider: MonitorProvider) {
-    this.provider = provider;
-    return this;
+  checkHandler(handler: string): boolean {
+    return this.handler === handler;
   }
 
-  unmounted () {
-    this.provider = undefined;
-    return this;
-  }
+  notify(params: object) {}
 }

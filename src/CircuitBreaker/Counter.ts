@@ -3,20 +3,24 @@
  */
 export class Counter {
   num: number;
-  
-  constructor (num = 0) {
+
+  constructor(num = 0) {
     this.num = num;
   }
 
-  get () {
+  get() {
     return this.num;
   }
 
-  increase () {
-    this.num += 1;
+  increase() {
+    this.num++;
   }
 
-  reset () {
+  decrease() {
+    this.num--;
+  }
+
+  reset() {
     this.num = 0;
   }
 }

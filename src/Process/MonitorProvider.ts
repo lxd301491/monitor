@@ -19,12 +19,15 @@ export class MonitorProvider {
     this.length = length || 0;
   }
 
-  async mergeEternals (obj: object) {
-    let tempObj = {};
-    for (const key: (keyof any) in obj) {
+  async mergeEternals (obj: any) {
+    let tempObj: any = {};
+    for (const key in obj) {
       tempObj[key] = await VariableExp.toStringStatic(obj[key]);
     }
-    
+    this.eternals = {
+      ...this.eternals,
+      ...tempObj
+    }
   }
 
   mounte (center: MonitorCenter): string {

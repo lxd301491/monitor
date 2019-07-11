@@ -1,3 +1,3 @@
-import { CircuitBreaker } from './CircuitBreaker/CircuitBreaker';
+import { CircuitBreaker } from "./circuitBreaker/CircuitBreaker";
 
 export default CircuitBreaker;
