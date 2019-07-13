@@ -16,7 +16,7 @@ export class MonitorConsumer extends AbstractConsumer {
     url: string,
     frequencyBreaker = new CircuitBreaker("60/60", 5 * 60, "30/60"),
     abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60"),
-    emitType: EMIT_TYPE
+    emitType: EMIT_TYPE = EMIT_TYPE.IMAGE
   ) {
     super(center, handler);
     this.url = url;
@@ -27,15 +27,6 @@ export class MonitorConsumer extends AbstractConsumer {
 
   injectCoustumEmit(func: Function) {
     this.emitFunc = func;
-  }
-
-  static json2Search(obj: any): string {
-    let result = "";
-    for (let key in obj) {
-      result += key + "=" + encodeURIComponent(obj[key]) + "&";
-    }
-    result = result.substring(0, result.length - 1);
-    return result;
   }
 
   consume(params: any): void {

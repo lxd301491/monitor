@@ -15,12 +15,43 @@ export class MonitorProvider {
   private curPoint: any;
   private curConsumerIndex: number = 0;
   private processHandler: number = 0;
+  private limits: any = {
+    userId: 20,
+    roleId: 20,
+    roleArr: 400,
+    isWhite: 2,
+    scc: 20,
+    deviceId: 40,
+    device: 40,
+    system: 20,
+    webview: 40,
+    appVersion: 20,
+    patchVersion: 400,
+    network: 100,
+    userAgent: 400,
+    actionLevel: 20,
+    action: 400,
+    actionGroup: 100,
+    actionStack: 100,
+    actionTime: 20,
+    routeData: 400,
+    url: 200,
+    referrer: 200,
+    cpu: 20,
+    memory: 20,
+    disk: 20,
+    jsErrorMessage: 200,
+    jsErrorLineNo: 10,
+    jsErrorColumnNo: 10,
+    jsErrorStack: 4000,
+    jsErrorFilename: 200
+  } 
 
   constructor(
     center: MonitorCenter,
     handler: string,
     volume: number = 10,
-    storage: any
+    storage: any | undefined = undefined
   ) {
     if (
       storage &&
@@ -40,13 +71,17 @@ export class MonitorProvider {
     }
   }
 
-  generate(params: any, limits: any) {
+  setCommonLimits(limits: any) {
+    this.limits = limits;
+  }
+
+  generate(params: any, limits: any = {}) {
     let emitObj: any = {};
     this.eternals.forEach((value, key) => {
       emitObj[key] = value.toString();
     });
     for (const key in params) {
-      emitObj[key] = new VariableExp(params[key], limits[key] || 0).toString();
+      emitObj[key] = new VariableExp(params[key], limits[key] || this.limits[key] || 0).toString();
     }
     var pointKey = `${this.handler}_${Math.random()
       .toString(32)
