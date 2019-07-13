@@ -1,3 +1,10 @@
+export enum EMIT_TYPE {
+  IMAGE,
+  XHR,
+  FETCH,
+  CUSTOM
+}
+
 export enum ACTION_LEVEL {
   INFO = 0,
   WARNING = 1,

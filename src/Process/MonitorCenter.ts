@@ -1,48 +1,55 @@
 import { MonitorProvider } from "./MonitorProvider";
 import { AbstractConsumer } from "./AbstractConsumer";
 import { Counter } from "../circuitBreaker/Counter";
-import { Queue } from "../base/Queue";
-import { MonitorDTO } from "../dto/monitorDto";
 
 export class MonitorCenter {
-  providers: MonitorProvider[] = [];
-  consumers: AbstractConsumer[] = [];
-  concurrent: number = 5;
-  counter: Counter = new Counter();
-  queue: Queue<MonitorDTO> = new Queue(100);
+  private providers: MonitorProvider[] = [];
+  private consumers: AbstractConsumer[] = [];
+  private maxConcurrent: number = 5;
+  private concurrentCounter: Counter = new Counter();
+  private visitFlag: string = `${Math.random()
+    .toString(32)
+    .substring(2)}${new Date().getTime()}`;
+  private stack: number = 0;
 
   constructor(concurrent: number) {
-    this.concurrent = concurrent;
+    this.maxConcurrent = concurrent;
   }
 
-  register(provider: MonitorProvider): string {
-    let handler = provider.mounte(this);
+  getVisitFlag(): string {
+    return this.visitFlag;
+  }
+
+  applyStack() {
+    return ++this.stack;
+  }
+
+  register(provider: MonitorProvider): MonitorProvider {
     this.providers.push(provider);
-    return handler;
+    provider.start();
+    return provider;
   }
 
   subscribe(consumer: AbstractConsumer): AbstractConsumer {
+    this.consumers.push(consumer);
     return consumer;
   }
 
-  distribute(monitorDto: MonitorDTO): void {
-    this.queue.push(monitorDto);
+  applyConcurrent(): number {
+    if (this.concurrentCounter.get() < this.maxConcurrent) {
+      this.concurrentCounter.increase();
+      return this.concurrentCounter.get();
+    }
+    return -1;
   }
 
-  process() {
-    setInterval(() => {
-      if (this.counter.get() < this.concurrent) {
-        let dto: MonitorDTO | undefined = this.queue.pop();
-        if (dto) {
-          let tDto: MonitorDTO = dto;
-          this.consumers.forEach(item => {
-            if (item.checkHandler(tDto.getHandler())) {
-              this.counter.increase();
-              item.notify(tDto.getParams());
-            }
-          });
-        }
-      }
+  remandConcurrent(): void {
+    this.concurrentCounter.decrease();
+  }
+
+  applyConsumers(handler: string): AbstractConsumer[] {
+    return this.consumers.filter(item => {
+      return item.checkHandler(handler);
     });
   }
 }

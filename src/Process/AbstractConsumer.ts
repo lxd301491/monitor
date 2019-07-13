@@ -1,11 +1,17 @@
-import { MonitorProvider } from "./MonitorProvider";
+import { MonitorCenter } from "./MonitorCenter";
 
 export class AbstractConsumer {
-  handler: string = "";
+  private handler: string;
+  protected center: MonitorCenter;
+
+  constructor(center: MonitorCenter, handler: string) {
+    this.center = center;
+    this.handler = handler;
+  }
 
   checkHandler(handler: string): boolean {
     return this.handler === handler;
   }
 
-  notify(params: object) {}
+  consume(params: any): void {}
 }
