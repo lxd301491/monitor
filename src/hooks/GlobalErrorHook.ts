@@ -1,20 +1,25 @@
-import { AbstractHook } from './AbstractHook';
-import { MonitorCenter } from '../process/MonitorCenter';
-import { ACTION_LEVEL, ACTION_GROUP } from '../config/globalEnum';
+import { AbstractHook } from "./AbstractHook";
+import { MonitorCenter } from "../process/MonitorCenter";
+import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
 
 export class GlobalError extends AbstractHook {
-  constructor (center: MonitorCenter, url: string) {
+  constructor(center: MonitorCenter, url: string) {
     super(center, "windowError", url);
     let self = this;
-    window.addEventListener("error", function (ev: ErrorEvent) {
-      if (ev.target instanceof HTMLElement && ['img', 'script', 'link'].includes(ev.target.tagName.toLocaleLowerCase())) {
+    window.addEventListener("error", function(ev: ErrorEvent) {
+      if (
+        ev.target instanceof HTMLElement &&
+        ["img", "script", "link"].includes(
+          ev.target.tagName.toLocaleLowerCase()
+        )
+      ) {
         self.provider.generate({
           actionLevel: ACTION_LEVEL.ERROR,
           action: `资源加载异常 ${ev.target.getAttribute("src")}`,
           actionGroup: ACTION_GROUP.GLOBAL_ERROR
         });
       } else {
-        let stack: string = '';
+        let stack: string = "";
         if (!!ev.error && !!ev.error.stack) {
           // 如果浏览器有堆栈信息 直接使用
           stack = ev.error.stack.toString();
@@ -25,14 +30,14 @@ export class GlobalError extends AbstractHook {
           let f: Function = arguments.callee.caller;
           let c: number = 3;
           // 这里只拿三层堆栈信息
-          while (f && (--c > 0)) {
+          while (f && --c > 0) {
             ext.push(f.toString());
             if (f === f.caller) {
-              break;// 如果有环
+              break; // 如果有环
             }
             f = f.caller;
           }
-          stack = ext.join(',');
+          stack = ext.join(",");
         }
         self.provider.generate({
           actionLevel: ACTION_LEVEL.ERROR,
@@ -45,6 +50,6 @@ export class GlobalError extends AbstractHook {
           jsErrorStack: stack
         });
       }
-    })
+    });
   }
 }

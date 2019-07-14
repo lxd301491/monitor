@@ -1,32 +1,31 @@
 import { AbstractConsumer } from "./AbstractConsumer";
-import { CircuitBreaker } from "../circuitBreaker/CircuitBreaker";
-import { MonitorCenter } from "./MonitorCenter";
-import { EMIT_TYPE } from "../config/globalEnum";
+import { CircuitBreaker } from "../tools/CircuitBreaker";
+import { MonitorCenter } from "../process/MonitorCenter";
+import { EMIT_TYPE } from "../configs/globalEnum";
 
 export class MonitorConsumer extends AbstractConsumer {
   private url: string;
-  private frequencyBreaker: CircuitBreaker;
-  private abnormalBreaker: CircuitBreaker;
-  private emitFunc: Function | undefined;
+  private frequencyBreaker: CircuitBreaker = new CircuitBreaker(
+    "60/60",
+    5 * 60,
+    "30/60"
+  );
+  private abnormalBreaker: CircuitBreaker = new CircuitBreaker(
+    "5/60",
+    5 * 60,
+    "0/60"
+  );
   private emitType: EMIT_TYPE;
 
   constructor(
     center: MonitorCenter,
     handler: string,
     url: string,
-    frequencyBreaker = new CircuitBreaker("60/60", 5 * 60, "30/60"),
-    abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60"),
     emitType: EMIT_TYPE = EMIT_TYPE.IMAGE
   ) {
     super(center, handler);
     this.url = url;
-    this.frequencyBreaker = frequencyBreaker;
-    this.abnormalBreaker = abnormalBreaker;
     this.emitType = emitType;
-  }
-
-  injectCoustumEmit(func: Function) {
-    this.emitFunc = func;
   }
 
   consume(params: any): void {

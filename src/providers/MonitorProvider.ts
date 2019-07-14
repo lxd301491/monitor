@@ -1,7 +1,7 @@
 import { VariableExp } from "./VariableExp";
-import { MonitorCenter } from "./MonitorCenter";
-import { Queue } from "../base/Queue";
-import { AbstractConsumer } from "./AbstractConsumer";
+import { MonitorCenter } from "../process/MonitorCenter";
+import { Queue } from "../tools/Queue";
+import { AbstractConsumer } from "../consumers/AbstractConsumer";
 
 export class MonitorProvider {
   /**
@@ -45,7 +45,7 @@ export class MonitorProvider {
     jsErrorColumnNo: 10,
     jsErrorStack: 4000,
     jsErrorFilename: 200
-  } 
+  };
 
   constructor(
     center: MonitorCenter,
@@ -81,7 +81,10 @@ export class MonitorProvider {
       emitObj[key] = value.toString();
     });
     for (const key in params) {
-      emitObj[key] = new VariableExp(params[key], limits[key] || this.limits[key] || 0).toString();
+      emitObj[key] = new VariableExp(
+        params[key],
+        limits[key] || this.limits[key] || 0
+      ).toString();
     }
     var pointKey = `${this.handler}_${Math.random()
       .toString(32)

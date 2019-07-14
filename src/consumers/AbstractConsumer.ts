@@ -1,8 +1,9 @@
-import { MonitorCenter } from "./MonitorCenter";
+import { MonitorCenter } from "../process/MonitorCenter";
 
-export class AbstractConsumer {
+export abstract class AbstractConsumer {
   private handler: string;
   protected center: MonitorCenter;
+  protected emitFunc: Function | undefined;
 
   constructor(center: MonitorCenter, handler: string) {
     this.center = center;
@@ -14,4 +15,8 @@ export class AbstractConsumer {
   }
 
   consume(params: any): void {}
+
+  injectCoustumEmit(func: Function) {
+    this.emitFunc = func;
+  }
 }

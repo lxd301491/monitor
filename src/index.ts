@@ -1,9 +1,7 @@
-import { CircuitBreaker } from "./circuitBreaker/CircuitBreaker";
-import { MonitorProvider } from "./process/MonitorProvider";
 import { MonitorCenter } from "./process/MonitorCenter";
+import { CONSUMER_TYPE } from "./configs/globalEnum";
 
 export default {
-  CircuitBreaker,
-  MonitorProvider,
-  MonitorCenter
+  MonitorCenter,
+  CONSUMER_TYPE
 };

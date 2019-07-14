@@ -1,6 +1,9 @@
-import { MonitorProvider } from "./MonitorProvider";
-import { AbstractConsumer } from "./AbstractConsumer";
-import { Counter } from "../circuitBreaker/Counter";
+import { MonitorProvider } from "../providers/MonitorProvider";
+import { AbstractConsumer } from "../consumers/AbstractConsumer";
+import { Counter } from "../tools/Counter";
+import { EMIT_TYPE, CONSUMER_TYPE } from "../configs/globalEnum";
+import { MonitorConsumer } from "../consumers/MonitorConsumer";
+import { WebtrendsConsumer } from "../consumers/WebtrendsConsumer";
 
 export class MonitorCenter {
   private providers: MonitorProvider[] = [];
@@ -24,13 +27,34 @@ export class MonitorCenter {
     return ++this.stack;
   }
 
-  register(provider: MonitorProvider): MonitorProvider {
+  register(
+    handler: string,
+    volume: number | undefined = undefined,
+    storage: any | undefined = undefined
+  ): MonitorProvider {
+    let provider = new MonitorProvider(this, handler, volume, storage);
     this.providers.push(provider);
     provider.start();
     return provider;
   }
 
-  subscribe(consumer: AbstractConsumer): AbstractConsumer {
+  subscribe(
+    cunsumerType: CONSUMER_TYPE,
+    handler: string,
+    url: string,
+    emitType: EMIT_TYPE | undefined = undefined
+  ): AbstractConsumer {
+    let consumer: AbstractConsumer;
+    switch (cunsumerType) {
+      case CONSUMER_TYPE.DEAFULT:
+        consumer = new MonitorConsumer(this, handler, url, emitType);
+        break;
+      case CONSUMER_TYPE.WEBTRENDS:
+        consumer = new WebtrendsConsumer(this, handler);
+        break;
+      default:
+        consumer = new MonitorConsumer(this, handler, url, emitType);
+    }
     this.consumers.push(consumer);
     return consumer;
   }
