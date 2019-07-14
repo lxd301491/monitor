@@ -4,7 +4,7 @@ import { MonitorCenter } from "../process/MonitorCenter";
 import { EMIT_TYPE } from "../configs/globalEnum";
 
 export class MonitorConsumer extends AbstractConsumer {
-  private url: string;
+  private api: string;
   private frequencyBreaker: CircuitBreaker = new CircuitBreaker(
     "60/60",
     5 * 60,
@@ -20,11 +20,11 @@ export class MonitorConsumer extends AbstractConsumer {
   constructor(
     center: MonitorCenter,
     handler: string,
-    url: string,
+    api: string,
     emitType: EMIT_TYPE = EMIT_TYPE.IMAGE
   ) {
     super(center, handler);
-    this.url = url;
+    this.api = api;
     this.emitType = emitType;
   }
 
@@ -79,14 +79,14 @@ export class MonitorConsumer extends AbstractConsumer {
     img.onabort = () => {
       return;
     };
-    img.src = this.url + "?" + this.obj2Search(params);
+    img.src = this.api + "?" + this.obj2Search(params);
   }
 
   private async xhrConsume(params: any) {
     if (XMLHttpRequest) {
       this.frequencyBreaker.count();
       let xhr: XMLHttpRequest = new XMLHttpRequest();
-      xhr.open("POST", this.url, true);
+      xhr.open("POST", this.api, true);
       xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
       xhr.onload = () => {
         return;
@@ -113,7 +113,7 @@ export class MonitorConsumer extends AbstractConsumer {
   private async fetchConsume(params: any) {
     if (fetch) {
       this.frequencyBreaker.count();
-      fetch(this.url, {
+      fetch(this.api, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"

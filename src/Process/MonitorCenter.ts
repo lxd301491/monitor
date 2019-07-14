@@ -41,13 +41,13 @@ export class MonitorCenter {
   subscribe(
     cunsumerType: consumers.CONSUMER_TYPE,
     handler: string,
-    url: string,
+    api: string,
     emitType: EMIT_TYPE | undefined = undefined
   ): AbstractConsumer {
     let consumer: AbstractConsumer = new (<any>consumers)[cunsumerType](
       this,
       handler,
-      url,
+      api,
       emitType
     );
 

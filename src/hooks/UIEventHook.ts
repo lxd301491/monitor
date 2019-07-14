@@ -2,8 +2,8 @@ import { AbstractHook } from "./AbstractHook";
 import { MonitorCenter } from "../process/MonitorCenter";
 
 export class UIEventHook extends AbstractHook {
-  constructor(center: MonitorCenter, url: string) {
-    super(center, "uiEvent", url);
+  constructor(center: MonitorCenter, api: string) {
+    super(center, "uiEvent", api);
     let self = this;
     document.addEventListener("click", function(ev: UIEvent) {
       self.provider.generate({

@@ -5,8 +5,8 @@ import { MonitorCenter } from "../process/MonitorCenter";
 export class AladdinHook extends AbstractHook {
   private timers: any[] = [];
 
-  constructor(center: MonitorCenter, url: string, aladdin: any) {
-    super(center, "alddinAbnormal", url);
+  constructor(center: MonitorCenter, api: string, aladdin: any) {
+    super(center, "alddinAbnormal", api);
 
     aladdin.on("call", (params: any) => {
       let { args, callId } = params;

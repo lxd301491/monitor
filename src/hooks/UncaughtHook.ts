@@ -3,8 +3,8 @@ import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorCenter } from "../process/MonitorCenter";
 
 export class UncaughtHook extends AbstractHook {
-  constructor(center: MonitorCenter, url: string) {
-    super(center, "windowUncaught", url);
+  constructor(center: MonitorCenter, api: string) {
+    super(center, "windowUncaught", api);
     let self = this;
     window.addEventListener("unhandledrejection", function(
       ev: PromiseRejectionEvent

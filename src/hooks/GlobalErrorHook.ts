@@ -3,8 +3,8 @@ import { MonitorCenter } from "../process/MonitorCenter";
 import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
 
 export class GlobalErrorHook extends AbstractHook {
-  constructor(center: MonitorCenter, url: string) {
-    super(center, "windowError", url);
+  constructor(center: MonitorCenter, api: string) {
+    super(center, "windowError", api);
     let self = this;
     window.addEventListener("error", function(ev: ErrorEvent) {
       if (

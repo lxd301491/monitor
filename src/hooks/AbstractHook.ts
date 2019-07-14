@@ -8,24 +8,24 @@ export abstract class AbstractHook {
   protected provider: MonitorProvider;
   private consumer: AbstractConsumer;
 
-  protected constructor(center: MonitorCenter, handler: string, url: string) {
+  protected constructor(center: MonitorCenter, handler: string, api: string) {
     this.center = center;
     this.provider = this.center.register(handler, 10);
     this.consumer = this.center.subscribe(
       CONSUMER_TYPE.MonitorConsumer,
       handler,
-      url
+      api
     );
   }
 
   static getInstance<T extends AbstractHook>(
-    this: new (center: MonitorCenter, url: string, other: any) => T,
+    this: new (center: MonitorCenter, api: string, other: any) => T,
     center: MonitorCenter,
-    url: string,
+    api: string,
     other: any
   ): T {
     if (!(<any>this).instance) {
-      (<any>this).instance = new this(center, url, other);
+      (<any>this).instance = new this(center, api, other);
     }
     return (<any>this).instance;
   }

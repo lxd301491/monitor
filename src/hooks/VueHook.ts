@@ -3,8 +3,8 @@ import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorCenter } from "../process/MonitorCenter";
 
 export class VueHook extends AbstractHook {
-  constructor(center: MonitorCenter, url: string, Vue: any) {
-    super(center, "vueError", url);
+  constructor(center: MonitorCenter, api: string, Vue: any) {
+    super(center, "vueError", api);
     Vue.config.errorHandler = (err: any, vm: any, info: string) => {
       let comFloor: string = "";
       if (vm) {
