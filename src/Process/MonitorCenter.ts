@@ -1,13 +1,13 @@
 import { MonitorProvider } from "../providers/MonitorProvider";
 import { AbstractConsumer } from "../consumers/AbstractConsumer";
 import { Counter } from "../tools/Counter";
-import { EMIT_TYPE, CONSUMER_TYPE } from "../configs/globalEnum";
-import { MonitorConsumer } from "../consumers/MonitorConsumer";
-import { WebtrendsConsumer } from "../consumers/WebtrendsConsumer";
+import { EMIT_TYPE } from "../configs/globalEnum";
+import * as hooks from "../hooks/index";
+import * as consumers from "../consumers/index";
 
 export class MonitorCenter {
-  private providers: MonitorProvider[] = [];
-  private consumers: AbstractConsumer[] = [];
+  private providers: Map<string, MonitorProvider> = new Map();
+  private consumers: Map<string, AbstractConsumer> = new Map();
   private maxConcurrent: number = 5;
   private concurrentCounter: Counter = new Counter();
   private visitFlag: string = `${Math.random()
@@ -33,29 +33,33 @@ export class MonitorCenter {
     storage: any | undefined = undefined
   ): MonitorProvider {
     let provider = new MonitorProvider(this, handler, volume, storage);
-    this.providers.push(provider);
+    this.providers.set(handler, provider);
     provider.start();
     return provider;
   }
 
   subscribe(
-    cunsumerType: CONSUMER_TYPE,
+    cunsumerType: consumers.CONSUMER_TYPE,
     handler: string,
     url: string,
     emitType: EMIT_TYPE | undefined = undefined
   ): AbstractConsumer {
-    let consumer: AbstractConsumer;
-    switch (cunsumerType) {
-      case CONSUMER_TYPE.DEAFULT:
-        consumer = new MonitorConsumer(this, handler, url, emitType);
-        break;
-      case CONSUMER_TYPE.WEBTRENDS:
-        consumer = new WebtrendsConsumer(this, handler);
-        break;
-      default:
-        consumer = new MonitorConsumer(this, handler, url, emitType);
+    let consumer: AbstractConsumer = new (<any>consumers)[cunsumerType](
+      this,
+      handler,
+      url,
+      emitType
+    );
+
+    let parentConsumer = this.consumers.get(handler);
+    while (parentConsumer && parentConsumer.hasNextConsumer()) {
+      parentConsumer = parentConsumer.getNextConsumer();
     }
-    this.consumers.push(consumer);
+    if (parentConsumer) {
+      parentConsumer.setNextConsumer(consumer);
+    } else {
+      this.consumers.set(handler, consumer);
+    }
     return consumer;
   }
 
@@ -71,9 +75,15 @@ export class MonitorCenter {
     this.concurrentCounter.decrease();
   }
 
-  applyConsumers(handler: string): AbstractConsumer[] {
-    return this.consumers.filter(item => {
-      return item.checkHandler(handler);
-    });
+  applyConsumers(handler: string): AbstractConsumer | undefined {
+    return this.consumers.get(handler);
+  }
+
+  launchHook(hookType: hooks.HOOK_TYPE, instanceParameters: any[]): any {
+    let greeter: any = (<any>hooks)[hookType].getInstance.apply(
+      (<any>hooks)[hookType],
+      instanceParameters
+    );
+    return greeter;
   }
 }

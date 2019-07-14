@@ -2,7 +2,7 @@ import { AbstractHook } from "./AbstractHook";
 import { MonitorCenter } from "../process/MonitorCenter";
 import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
 
-export class GlobalError extends AbstractHook {
+export class GlobalErrorHook extends AbstractHook {
   constructor(center: MonitorCenter, url: string) {
     super(center, "windowError", url);
     let self = this;

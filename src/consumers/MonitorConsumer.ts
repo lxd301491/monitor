@@ -28,28 +28,32 @@ export class MonitorConsumer extends AbstractConsumer {
     this.emitType = emitType;
   }
 
-  consume(params: any): void {
-    switch (this.emitType) {
-      case EMIT_TYPE.IMAGE: {
-        this.imageConsume(params);
-        break;
-      }
-      case EMIT_TYPE.XHR: {
-        this.xhrConsume(params);
-        break;
-      }
-      case EMIT_TYPE.FETCH: {
-        this.fetchConsume(params);
-        break;
-      }
-      case EMIT_TYPE.CUSTOM: {
-        if (this.emitFunc) {
-          this.emitFunc(params);
+  async consume(params: any): Promise<any> {
+    try {
+      switch (this.emitType) {
+        case EMIT_TYPE.IMAGE: {
+          await this.imageConsume(params);
           break;
         }
+        case EMIT_TYPE.XHR: {
+          await this.xhrConsume(params);
+          break;
+        }
+        case EMIT_TYPE.FETCH: {
+          await this.fetchConsume(params);
+          break;
+        }
+        case EMIT_TYPE.CUSTOM: {
+          if (this.emitFunc) {
+            await this.emitFunc(params);
+            break;
+          }
+        }
+        default:
+          this.imageConsume(params);
       }
-      default:
-        this.imageConsume(params);
+    } finally {
+      super.consume(params);
     }
   }
 
@@ -62,49 +66,51 @@ export class MonitorConsumer extends AbstractConsumer {
     return result;
   }
 
-  private imageConsume(params: any) {
+  private async imageConsume(params: any) {
     this.frequencyBreaker.count();
     let img = new Image();
     img.onerror = () => {
       this.abnormalBreaker.count();
-      this.center.remandConcurrent();
+      return;
     };
     img.onload = () => {
-      this.center.remandConcurrent();
+      return;
     };
     img.onabort = () => {
-      this.center.remandConcurrent();
+      return;
     };
     img.src = this.url + "?" + this.obj2Search(params);
   }
 
-  private xhrConsume(params: any) {
+  private async xhrConsume(params: any) {
     if (XMLHttpRequest) {
       this.frequencyBreaker.count();
       let xhr: XMLHttpRequest = new XMLHttpRequest();
       xhr.open("POST", this.url, true);
       xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
       xhr.onload = () => {
-        this.center.remandConcurrent();
+        return;
       };
       xhr.onabort = () => {
-        this.center.remandConcurrent();
+        return;
       };
       xhr.onerror = () => {
         this.abnormalBreaker.count();
-        this.center.remandConcurrent();
+        return;
       };
       xhr.onreadystatechange = () => {
         if (xhr.readyState !== 4 || xhr.status !== 200) {
           this.abnormalBreaker.count();
         }
-        this.center.remandConcurrent();
+        return;
       };
       xhr.send(this.obj2Search(params));
+    } else {
+      return;
     }
   }
 
-  private fetchConsume(params: any) {
+  private async fetchConsume(params: any) {
     if (fetch) {
       this.frequencyBreaker.count();
       fetch(this.url, {
@@ -120,8 +126,10 @@ export class MonitorConsumer extends AbstractConsumer {
           this.abnormalBreaker.count();
         })
         .finally(() => {
-          this.center.remandConcurrent();
+          return;
         });
+    } else {
+      return;
     }
   }
 }

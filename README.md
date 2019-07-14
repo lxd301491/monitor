@@ -1,13 +1,17 @@
-# 前端监控（Monitor）
+# 前端监控（Monitor）个人练手项目
 
-## 结构分析
+## 使用方法
 
 ```
-MonitorCenter
-  |- storage 数据持久化存储对象（非必须）
-  |-
-MonitorProvider
-  |-
-MonitorConsumer
-  |-
+npm install pa-monitor --save-dev
+
+main.js
+import * as PAMonitor from 'pa-monitor';
+
+var center = new PAMonitor.MonitorCenter();
+
+var globalErrorHook = center.launchHook(
+  PAMonitor.HOOK_TYPE.GlobalErrorHook,
+  [center, "http://www.baidu.com"]
+);
 ```

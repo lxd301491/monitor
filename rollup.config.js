@@ -1,39 +1,38 @@
-const nodeResolve = require('rollup-plugin-node-resolve');
-const typescript = require('rollup-plugin-typescript2');
+const nodeResolve = require("rollup-plugin-node-resolve");
+const typescript = require("rollup-plugin-typescript2");
 // const babel = require('rollup-plugin-babel');
-const rollup = require('rollup');
+const rollup = require("rollup");
 
 // see below for details on the options
 const inputOptions = {
-  input: 'src/index.ts',
+  input: "src/index.ts",
   plugins: [
     typescript({
       tsconfig: "tsconfig.json"
     }),
-    nodeResolve(),
+    nodeResolve()
     // babel({
     //   runtimeHelpers: true,
     //   exclude: 'node_modules/**'
     // })
-	]
-
+  ]
 };
 const outputOptions = [
   {
-    file: 'dist/monitor.js',
-    format: 'umd',
-    name: 'Monitor',
-    sourceMap: true, //代码映射，方便调试
+    file: "dist/monitor.js",
+    format: "umd",
+    name: "PAMonitor",
+    sourceMap: true //代码映射，方便调试
   },
   {
-    file: 'dist/monitor.cjs.js',
-    format: 'cjs'
+    file: "dist/monitor.cjs.js",
+    format: "cjs"
   },
   {
-    file: 'dist/monitor.esm.js',
-    format: 'es'
-  },
-]
+    file: "dist/monitor.esm.js",
+    format: "es"
+  }
+];
 
 async function build() {
   // create a bundle
@@ -45,7 +44,7 @@ async function build() {
 
     // or write the bundle to disk
     await bundle.write(output);
-  })
+  });
 }
 
 build();

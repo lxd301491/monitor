@@ -1,6 +1,6 @@
-import { AbstractState } from './AbstractState';
-import { Counter } from './Counter';
-import { CloseState } from './CloseState';
+import { AbstractState } from "./AbstractState";
+import { Counter } from "./Counter";
+import { CloseState } from "./CloseState";
 
 export class CircuitBreaker {
   /**
@@ -26,37 +26,41 @@ export class CircuitBreaker {
 
   state: AbstractState;
 
-  constructor (thresholdForOpen = '600/60', idleTimeForOpen = 5 * 60, thresholdForHalfOpen = '300/60') {
+  constructor(
+    thresholdForOpen = "600/60",
+    idleTimeForOpen = 5 * 60,
+    thresholdForHalfOpen = "300/60"
+  ) {
     this.idleTimeForOpen = idleTimeForOpen;
-    this.thresholdForOpen = thresholdForOpen.split('/');
-    this.thresholdForHalfOpen = thresholdForHalfOpen.split('/');
+    this.thresholdForOpen = thresholdForOpen.split("/");
+    this.thresholdForHalfOpen = thresholdForHalfOpen.split("/");
     this.counter = new Counter(); // max times for each 60s
     this.state = new CloseState(); // default state
   }
 
-  getState (): AbstractState {
+  getState(): AbstractState {
     return this.state;
   }
 
-  setState (state: AbstractState): void {
+  setState(state: AbstractState): void {
     this.state = state;
   }
 
-  reset (): void {
+  reset(): void {
     this.counter.reset();
   }
 
-  canPass (): boolean {
+  canPass(): boolean {
     return this.getState().canPass(this);
   }
 
-  count () {
+  count() {
     // 计数器 +1, 同时让 当前的 state 去做条件校验
     this.counter.increase();
     this.getState().checkout(this);
   }
 
-  getCount () {
+  getCount() {
     return this.counter.get();
   }
 }

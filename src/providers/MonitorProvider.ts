@@ -12,8 +12,6 @@ export class MonitorProvider {
   private pointQueue: Queue<any>;
   private center: MonitorCenter;
   private handler: string;
-  private curPoint: any;
-  private curConsumerIndex: number = 0;
   private processHandler: number = 0;
   private limits: any = {
     userId: 20,
@@ -75,13 +73,13 @@ export class MonitorProvider {
     this.limits = limits;
   }
 
-  generate(params: any, limits: any = {}) {
+  async generate(params: any, limits: any = {}) {
     let emitObj: any = {};
-    this.eternals.forEach((value, key) => {
-      emitObj[key] = value.toString();
+    this.eternals.forEach(async (value, key) => {
+      emitObj[key] = await value.toString();
     });
     for (const key in params) {
-      emitObj[key] = new VariableExp(
+      emitObj[key] = await new VariableExp(
         params[key],
         limits[key] || this.limits[key] || 0
       ).toString();
@@ -102,19 +100,13 @@ export class MonitorProvider {
 
   start(): void {
     this.processHandler = window.setInterval(() => {
-      if (
-        (this.curPoint || this.pointQueue.size() > 0) &&
-        this.center.applyConcurrent()
-      ) {
-        this.curPoint = this.curPoint || this.pointQueue.pop();
-        let consumers: AbstractConsumer[] = this.center.applyConsumers(
-          this.handler
-        );
-        let consumer = consumers[this.curConsumerIndex];
-        consumer.consume(this.curPoint);
-        if (this.curConsumerIndex === consumers.length - 1) {
-          this.curConsumerIndex = 0;
-          this.curPoint = null;
+      if (this.pointQueue.size() > 0 && this.center.applyConcurrent()) {
+        let point: any = this.pointQueue.pop();
+        let consumers:
+          | AbstractConsumer
+          | undefined = this.center.applyConsumers(this.handler);
+        if (consumers) {
+          consumers.consume(point.value);
         }
       }
     }, 20);

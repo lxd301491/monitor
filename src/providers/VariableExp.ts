@@ -41,7 +41,11 @@ export class VariableExp {
       default:
         target = obj;
     }
-    if (["[object Function]", "[[object Promise]]"].includes(Object.prototype.toString.call(target))) {
+    if (
+      ["[object Function]", "[[object Promise]]"].includes(
+        Object.prototype.toString.call(target)
+      )
+    ) {
       target = await VariableExp.toObjStatic(target);
     }
     return target;

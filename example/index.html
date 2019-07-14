@@ -9,8 +9,15 @@
   </head>
   <body></body>
   <script>
-    var center = new Monitor.MonitorCenter();
-    var provider = new Monitor.MonitorProvider();
-    var handler = center.register(provider);
+    var center = new PAMonitor.MonitorCenter();
+    var globalErrorHook = center.launchHook(
+      PAMonitor.HOOK_TYPE.GlobalErrorHook,
+      [center, "http://www.baidu.com"]
+    );
+    var uncaughtHook = center.launchHook(PAMonitor.HOOK_TYPE.UncaughtHook, [
+      center,
+      "http://www.baidu.com"
+    ]);
+    Promise.reject("112");
   </script>
 </html>
