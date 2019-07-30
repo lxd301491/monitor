@@ -1,6 +1,6 @@
 {
   "name": "pa-monitor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "```\r npm install pa-monitor --save-dev",
   "main": "src/index.ts",
   "scripts": {
