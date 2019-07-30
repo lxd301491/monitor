@@ -2,6 +2,8 @@ export enum EMIT_TYPE {
   IMAGE,
   XHR,
   FETCH,
+  WEBTRENDS_VISIT,
+  WEBTRENDS_CLICK,
   CUSTOM
 }
 

@@ -1,5 +1,5 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorCenter } from "../process/MonitorCenter";
+import { MonitorCenter } from "../MonitorCenter";
 import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
 
 export class GlobalErrorHook extends AbstractHook {
@@ -13,7 +13,7 @@ export class GlobalErrorHook extends AbstractHook {
           ev.target.tagName.toLocaleLowerCase()
         )
       ) {
-        self.provider.generate({
+        self.provider.track({
           actionLevel: ACTION_LEVEL.ERROR,
           action: `资源加载异常 ${ev.target.getAttribute("src")}`,
           actionGroup: ACTION_GROUP.GLOBAL_ERROR
@@ -39,7 +39,7 @@ export class GlobalErrorHook extends AbstractHook {
           }
           stack = ext.join(",");
         }
-        self.provider.generate({
+        self.provider.track({
           actionLevel: ACTION_LEVEL.ERROR,
           action: `js全局异常`,
           actionGroup: ACTION_GROUP.GLOBAL_ERROR,

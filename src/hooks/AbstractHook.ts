@@ -1,21 +1,17 @@
-import { MonitorCenter } from "../process/MonitorCenter";
-import { MonitorProvider } from "../providers/MonitorProvider";
-import { CONSUMER_TYPE } from "../consumers/index";
-import { AbstractConsumer } from "../consumers/AbstractConsumer";
+import { MonitorCenter } from "../MonitorCenter";
+import { MonitorProvider } from "../MonitorProvider";
+import { MonitorConsumer } from "../MonitorConsumer";
 
 export abstract class AbstractHook {
   protected center: MonitorCenter;
   protected provider: MonitorProvider;
-  private consumer: AbstractConsumer;
+  private consumer: MonitorConsumer;
 
   protected constructor(center: MonitorCenter, handler: string, api: string) {
     this.center = center;
-    this.provider = this.center.register(handler, 10);
-    this.consumer = this.center.subscribe(
-      CONSUMER_TYPE.MonitorConsumer,
-      handler,
-      api
-    );
+    this.provider = this.center.register(new MonitorProvider(handler));
+    this.consumer = this.center.subscribe(new MonitorConsumer(handler, api));
+    this.consumer.start();
   }
 
   static getInstance<T extends AbstractHook>(
@@ -34,7 +30,7 @@ export abstract class AbstractHook {
     return this.provider;
   }
 
-  getConsumer(): AbstractConsumer {
+  getConsumer(): MonitorConsumer {
     return this.consumer;
   }
 }

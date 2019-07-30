@@ -1,6 +1,6 @@
 import { AbstractHook } from "./AbstractHook";
 import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
-import { MonitorCenter } from "../process/MonitorCenter";
+import { MonitorCenter } from "../MonitorCenter";
 
 export class VueHook extends AbstractHook {
   constructor(center: MonitorCenter, api: string, Vue: any) {
@@ -14,7 +14,7 @@ export class VueHook extends AbstractHook {
           comFloor = vm.$options.name + "=>" + comFloor;
         }
       }
-      this.provider.generate({
+      this.provider.track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `${comFloor} ${info}`,
         actionGroup: ACTION_GROUP.TIMEOUT,
