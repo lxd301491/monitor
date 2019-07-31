@@ -5,7 +5,7 @@ const rollup = require("rollup");
 
 // see below for details on the options
 const inputOptions = {
-  input: "src/index.ts",
+  input: "src/index.d.ts",
   plugins: [
     typescript({
       tsconfig: "tsconfig.json"

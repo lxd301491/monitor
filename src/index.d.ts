@@ -4,7 +4,7 @@ import { MonitorProvider } from './MonitorProvider';
 import { HOOK_TYPE } from "./hooks/index";
 import * as GlobalEnum from "./configs/globalEnum";
 
-export default {
+export {
   MonitorCenter,
   MonitorConsumer,
   MonitorProvider,
