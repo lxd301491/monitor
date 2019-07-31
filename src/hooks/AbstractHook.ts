@@ -15,10 +15,10 @@ export abstract class AbstractHook {
   }
 
   static getInstance<T extends AbstractHook>(
-    this: new (center: MonitorCenter, api: string, other: any) => T,
+    this: new (center: MonitorCenter, api: string, other?: any) => T,
     center: MonitorCenter,
     api: string,
-    other: any
+    other?: any
   ): T {
     if (!(<any>this).instance) {
       (<any>this).instance = new this(center, api, other);

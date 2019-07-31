@@ -166,248 +166,24 @@ var StoreArea = /** @class */ (function () {
     return StoreArea;
 }());
 
-var VariableExp = /** @class */ (function () {
-    function VariableExp(obj, limit) {
-        if (limit === void 0) { limit = 0; }
-        this.obj = obj;
-        this.limit = limit;
+var MonitorCenter = /** @class */ (function () {
+    function MonitorCenter(appName) {
+        this.providers = [];
+        this.consumers = [];
+        this.store = new StoreArea(appName);
     }
-    VariableExp.prototype.toObj = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var target;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, VariableExp.toObjStatic(this.obj)];
-                    case 1:
-                        target = _a.sent();
-                        return [2 /*return*/, target];
-                }
-            });
-        });
+    MonitorCenter.prototype.getStoreIns = function () {
+        return this.store;
     };
-    VariableExp.prototype.toString = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var target;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, VariableExp.toStringStatic(this.obj)];
-                    case 1:
-                        target = _a.sent();
-                        if (typeof this.limit === "number" && this.limit > 0) {
-                            target = target.slice(0, this.limit);
-                        }
-                        return [2 /*return*/, target];
-                }
-            });
-        });
+    MonitorCenter.prototype.register = function (provider) {
+        this.providers.push(provider);
+        return provider;
     };
-    VariableExp.toObjStatic = function (obj) {
-        return __awaiter(this, void 0, void 0, function () {
-            var target, _a;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        _a = Object.prototype.toString.call(obj);
-                        switch (_a) {
-                            case "[object Array]": return [3 /*break*/, 1];
-                            case "[object Object]": return [3 /*break*/, 1];
-                            case "[object Number]": return [3 /*break*/, 1];
-                            case "[object Undefined]": return [3 /*break*/, 1];
-                            case "[object Boolean]": return [3 /*break*/, 1];
-                            case "[object String]": return [3 /*break*/, 1];
-                            case "[object Symbol]": return [3 /*break*/, 1];
-                            case "[object Promise]": return [3 /*break*/, 2];
-                            case "[object Function]": return [3 /*break*/, 4];
-                        }
-                        return [3 /*break*/, 5];
-                    case 1:
-                        target = obj;
-                        return [3 /*break*/, 6];
-                    case 2: return [4 /*yield*/, obj];
-                    case 3:
-                        target = _b.sent();
-                        return [3 /*break*/, 6];
-                    case 4:
-                        target = obj();
-                        return [3 /*break*/, 6];
-                    case 5:
-                        target = obj;
-                        _b.label = 6;
-                    case 6:
-                        if (!["[object Function]", "[[object Promise]]"].includes(Object.prototype.toString.call(target))) return [3 /*break*/, 8];
-                        return [4 /*yield*/, VariableExp.toObjStatic(target)];
-                    case 7:
-                        target = _b.sent();
-                        _b.label = 8;
-                    case 8: return [2 /*return*/, target];
-                }
-            });
-        });
+    MonitorCenter.prototype.subscribe = function (consumer) {
+        this.consumers.push(consumer);
+        return consumer;
     };
-    VariableExp.toStringStatic = function (obj) {
-        return __awaiter(this, void 0, void 0, function () {
-            var target, type, _a;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        target = "";
-                        type = Object.prototype.toString.call(obj);
-                        _a = type;
-                        switch (_a) {
-                            case "[object Array]": return [3 /*break*/, 1];
-                            case "[object Object]": return [3 /*break*/, 1];
-                            case "[object Number]": return [3 /*break*/, 2];
-                            case "[object Undefined]": return [3 /*break*/, 3];
-                            case "[object Boolean]": return [3 /*break*/, 4];
-                            case "[object String]": return [3 /*break*/, 5];
-                            case "[object Symbol]": return [3 /*break*/, 6];
-                            case "[object Promise]": return [3 /*break*/, 7];
-                            case "[object Function]": return [3 /*break*/, 9];
-                        }
-                        return [3 /*break*/, 10];
-                    case 1:
-                        target = JSON.stringify(obj);
-                        return [3 /*break*/, 11];
-                    case 2:
-                        target = obj.toString();
-                        return [3 /*break*/, 11];
-                    case 3:
-                        target = "undefined";
-                        return [3 /*break*/, 11];
-                    case 4:
-                        target = obj ? "1" : "0";
-                        return [3 /*break*/, 11];
-                    case 5:
-                        target = obj;
-                        return [3 /*break*/, 11];
-                    case 6:
-                        target = obj.toString();
-                        return [3 /*break*/, 11];
-                    case 7: return [4 /*yield*/, obj];
-                    case 8:
-                        target = _b.sent();
-                        return [3 /*break*/, 11];
-                    case 9:
-                        target = obj();
-                        return [3 /*break*/, 11];
-                    case 10:
-                        target = "";
-                        _b.label = 11;
-                    case 11:
-                        if (!(Object.prototype.toString.call(target) !== "[object String]")) return [3 /*break*/, 13];
-                        return [4 /*yield*/, VariableExp.toStringStatic(target)];
-                    case 12:
-                        target = _b.sent();
-                        _b.label = 13;
-                    case 13: return [2 /*return*/, target];
-                }
-            });
-        });
-    };
-    return VariableExp;
-}());
-
-var limits = {
-    userId: 20,
-    roleId: 20,
-    roleArr: 400,
-    isWhite: 2,
-    scc: 20,
-    deviceId: 40,
-    device: 40,
-    system: 20,
-    webview: 40,
-    appVersion: 20,
-    patchVersion: 400,
-    network: 100,
-    userAgent: 400,
-    actionLevel: 20,
-    action: 400,
-    actionGroup: 100,
-    actionStack: 100,
-    actionTime: 20,
-    routeData: 400,
-    url: 200,
-    referrer: 200,
-    cpu: 20,
-    memory: 20,
-    disk: 20,
-    jsErrorMessage: 200,
-    jsErrorLineNo: 10,
-    jsErrorColumnNo: 10,
-    jsErrorStack: 4000,
-    jsErrorFilename: 200
-};
-var MonitorProvider = /** @class */ (function () {
-    function MonitorProvider(handler) {
-        /**
-         * 静态数据，添加后每个生成的埋点都会携带，除非主动发生改变
-         */
-        this.eternals = new Map();
-        this.handler = "";
-        this.limits = limits;
-        this.handler = handler;
-    }
-    MonitorProvider.prototype.mountStore = function (store) {
-        this.store = store;
-    };
-    MonitorProvider.prototype.mergeEternals = function (params, limits) {
-        for (var key in params) {
-            this.eternals.set(key, new VariableExp(params[key], limits[key] || 0));
-        }
-    };
-    MonitorProvider.prototype.setCommonLimits = function (limits) {
-        this.limits = limits;
-    };
-    MonitorProvider.prototype.track = function (params, limits) {
-        if (limits === void 0) { limits = {}; }
-        return __awaiter(this, void 0, void 0, function () {
-            var emitObj, _a, _b, _i, key, _c, _d;
-            var _this = this;
-            return __generator(this, function (_e) {
-                switch (_e.label) {
-                    case 0:
-                        emitObj = {};
-                        this.eternals.forEach(function (value, key) { return __awaiter(_this, void 0, void 0, function () {
-                            var _a, _b;
-                            return __generator(this, function (_c) {
-                                switch (_c.label) {
-                                    case 0:
-                                        _a = emitObj;
-                                        _b = key;
-                                        return [4 /*yield*/, value.toString()];
-                                    case 1:
-                                        _a[_b] = _c.sent();
-                                        return [2 /*return*/];
-                                }
-                            });
-                        }); });
-                        _a = [];
-                        for (_b in params)
-                            _a.push(_b);
-                        _i = 0;
-                        _e.label = 1;
-                    case 1:
-                        if (!(_i < _a.length)) return [3 /*break*/, 4];
-                        key = _a[_i];
-                        _c = emitObj;
-                        _d = key;
-                        return [4 /*yield*/, new VariableExp(params[key], limits[key] || this.limits[key] || 0).toString()];
-                    case 2:
-                        _c[_d] = _e.sent();
-                        _e.label = 3;
-                    case 3:
-                        _i++;
-                        return [3 /*break*/, 1];
-                    case 4:
-                        if (this.store)
-                            this.store.store(this.handler, emitObj);
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
-    return MonitorProvider;
+    return MonitorCenter;
 }());
 
 /**
@@ -796,6 +572,250 @@ var MonitorConsumer = /** @class */ (function () {
     return MonitorConsumer;
 }());
 
+var VariableExp = /** @class */ (function () {
+    function VariableExp(obj, limit) {
+        if (limit === void 0) { limit = 0; }
+        this.obj = obj;
+        this.limit = limit;
+    }
+    VariableExp.prototype.toObj = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var target;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, VariableExp.toObjStatic(this.obj)];
+                    case 1:
+                        target = _a.sent();
+                        return [2 /*return*/, target];
+                }
+            });
+        });
+    };
+    VariableExp.prototype.toString = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var target;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, VariableExp.toStringStatic(this.obj)];
+                    case 1:
+                        target = _a.sent();
+                        if (typeof this.limit === "number" && this.limit > 0) {
+                            target = target.slice(0, this.limit);
+                        }
+                        return [2 /*return*/, target];
+                }
+            });
+        });
+    };
+    VariableExp.toObjStatic = function (obj) {
+        return __awaiter(this, void 0, void 0, function () {
+            var target, _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _a = Object.prototype.toString.call(obj);
+                        switch (_a) {
+                            case "[object Array]": return [3 /*break*/, 1];
+                            case "[object Object]": return [3 /*break*/, 1];
+                            case "[object Number]": return [3 /*break*/, 1];
+                            case "[object Undefined]": return [3 /*break*/, 1];
+                            case "[object Boolean]": return [3 /*break*/, 1];
+                            case "[object String]": return [3 /*break*/, 1];
+                            case "[object Symbol]": return [3 /*break*/, 1];
+                            case "[object Promise]": return [3 /*break*/, 2];
+                            case "[object Function]": return [3 /*break*/, 4];
+                        }
+                        return [3 /*break*/, 5];
+                    case 1:
+                        target = obj;
+                        return [3 /*break*/, 6];
+                    case 2: return [4 /*yield*/, obj];
+                    case 3:
+                        target = _b.sent();
+                        return [3 /*break*/, 6];
+                    case 4:
+                        target = obj();
+                        return [3 /*break*/, 6];
+                    case 5:
+                        target = obj;
+                        _b.label = 6;
+                    case 6:
+                        if (!["[object Function]", "[[object Promise]]"].includes(Object.prototype.toString.call(target))) return [3 /*break*/, 8];
+                        return [4 /*yield*/, VariableExp.toObjStatic(target)];
+                    case 7:
+                        target = _b.sent();
+                        _b.label = 8;
+                    case 8: return [2 /*return*/, target];
+                }
+            });
+        });
+    };
+    VariableExp.toStringStatic = function (obj) {
+        return __awaiter(this, void 0, void 0, function () {
+            var target, type, _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        target = "";
+                        type = Object.prototype.toString.call(obj);
+                        _a = type;
+                        switch (_a) {
+                            case "[object Array]": return [3 /*break*/, 1];
+                            case "[object Object]": return [3 /*break*/, 1];
+                            case "[object Number]": return [3 /*break*/, 2];
+                            case "[object Undefined]": return [3 /*break*/, 3];
+                            case "[object Boolean]": return [3 /*break*/, 4];
+                            case "[object String]": return [3 /*break*/, 5];
+                            case "[object Symbol]": return [3 /*break*/, 6];
+                            case "[object Promise]": return [3 /*break*/, 7];
+                            case "[object Function]": return [3 /*break*/, 9];
+                        }
+                        return [3 /*break*/, 10];
+                    case 1:
+                        target = JSON.stringify(obj);
+                        return [3 /*break*/, 11];
+                    case 2:
+                        target = obj.toString();
+                        return [3 /*break*/, 11];
+                    case 3:
+                        target = "undefined";
+                        return [3 /*break*/, 11];
+                    case 4:
+                        target = obj ? "1" : "0";
+                        return [3 /*break*/, 11];
+                    case 5:
+                        target = obj;
+                        return [3 /*break*/, 11];
+                    case 6:
+                        target = obj.toString();
+                        return [3 /*break*/, 11];
+                    case 7: return [4 /*yield*/, obj];
+                    case 8:
+                        target = _b.sent();
+                        return [3 /*break*/, 11];
+                    case 9:
+                        target = obj();
+                        return [3 /*break*/, 11];
+                    case 10:
+                        target = "";
+                        _b.label = 11;
+                    case 11:
+                        if (!(Object.prototype.toString.call(target) !== "[object String]")) return [3 /*break*/, 13];
+                        return [4 /*yield*/, VariableExp.toStringStatic(target)];
+                    case 12:
+                        target = _b.sent();
+                        _b.label = 13;
+                    case 13: return [2 /*return*/, target];
+                }
+            });
+        });
+    };
+    return VariableExp;
+}());
+
+var limits = {
+    userId: 20,
+    roleId: 20,
+    roleArr: 400,
+    isWhite: 2,
+    scc: 20,
+    deviceId: 40,
+    device: 40,
+    system: 20,
+    webview: 40,
+    appVersion: 20,
+    patchVersion: 400,
+    network: 100,
+    userAgent: 400,
+    actionLevel: 20,
+    action: 400,
+    actionGroup: 100,
+    actionStack: 100,
+    actionTime: 20,
+    routeData: 400,
+    url: 200,
+    referrer: 200,
+    cpu: 20,
+    memory: 20,
+    disk: 20,
+    jsErrorMessage: 200,
+    jsErrorLineNo: 10,
+    jsErrorColumnNo: 10,
+    jsErrorStack: 4000,
+    jsErrorFilename: 200
+};
+var MonitorProvider = /** @class */ (function () {
+    function MonitorProvider(handler) {
+        /**
+         * 静态数据，添加后每个生成的埋点都会携带，除非主动发生改变
+         */
+        this.eternals = new Map();
+        this.handler = "";
+        this.limits = limits;
+        this.handler = handler;
+    }
+    MonitorProvider.prototype.mountStore = function (store) {
+        this.store = store;
+    };
+    MonitorProvider.prototype.mergeEternals = function (params, limits) {
+        for (var key in params) {
+            this.eternals.set(key, new VariableExp(params[key], limits[key] || 0));
+        }
+    };
+    MonitorProvider.prototype.setCommonLimits = function (limits) {
+        this.limits = limits;
+    };
+    MonitorProvider.prototype.track = function (params, limits) {
+        if (limits === void 0) { limits = {}; }
+        return __awaiter(this, void 0, void 0, function () {
+            var emitObj, _a, _b, _i, key, _c, _d;
+            var _this = this;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0:
+                        emitObj = {};
+                        this.eternals.forEach(function (value, key) { return __awaiter(_this, void 0, void 0, function () {
+                            var _a, _b;
+                            return __generator(this, function (_c) {
+                                switch (_c.label) {
+                                    case 0:
+                                        _a = emitObj;
+                                        _b = key;
+                                        return [4 /*yield*/, value.toString()];
+                                    case 1:
+                                        _a[_b] = _c.sent();
+                                        return [2 /*return*/];
+                                }
+                            });
+                        }); });
+                        _a = [];
+                        for (_b in params)
+                            _a.push(_b);
+                        _i = 0;
+                        _e.label = 1;
+                    case 1:
+                        if (!(_i < _a.length)) return [3 /*break*/, 4];
+                        key = _a[_i];
+                        _c = emitObj;
+                        _d = key;
+                        return [4 /*yield*/, new VariableExp(params[key], limits[key] || this.limits[key] || 0).toString()];
+                    case 2:
+                        _c[_d] = _e.sent();
+                        _e.label = 3;
+                    case 3:
+                        _i++;
+                        return [3 /*break*/, 1];
+                    case 4:
+                        if (this.store)
+                            this.store.store(this.handler, emitObj);
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    return MonitorProvider;
+}());
+
 var AbstractHook = /** @class */ (function () {
     function AbstractHook(center, handler, api) {
         this.center = center;
@@ -982,48 +1002,16 @@ var VueHook = /** @class */ (function (_super) {
     return VueHook;
 }(AbstractHook));
 
-(function (HOOK_TYPE) {
-    HOOK_TYPE["AladdinHook"] = "AladdinHook";
-    HOOK_TYPE["GlobalErrorHook"] = "GlobalErrorHook";
-    HOOK_TYPE["UIEventHook"] = "UIEventHook";
-    HOOK_TYPE["UncaughtHook"] = "UncaughtHook";
-    HOOK_TYPE["VueHook"] = "VueHook";
-})(exports.HOOK_TYPE || (exports.HOOK_TYPE = {}));
-
-var hooks = /*#__PURE__*/Object.freeze({
-    get HOOK_TYPE () { return exports.HOOK_TYPE; },
+var index = {
     AladdinHook: AladdinHook,
     GlobalErrorHook: GlobalErrorHook,
     UIEventHook: UIEventHook,
     UncaughtHook: UncaughtHook,
     VueHook: VueHook
-});
-
-var MonitorCenter = /** @class */ (function () {
-    function MonitorCenter(appName) {
-        this.providers = [];
-        this.consumers = [];
-        this.store = new StoreArea(appName);
-    }
-    MonitorCenter.prototype.getStoreIns = function () {
-        return this.store;
-    };
-    MonitorCenter.prototype.register = function (provider) {
-        this.providers.push(provider);
-        return provider;
-    };
-    MonitorCenter.prototype.subscribe = function (consumer) {
-        this.consumers.push(consumer);
-        return consumer;
-    };
-    MonitorCenter.prototype.launchHook = function (hookType, instanceParameters) {
-        var greeter = hooks[hookType].getInstance.apply(hooks[hookType], instanceParameters);
-        return greeter;
-    };
-    return MonitorCenter;
-}());
+};
 
 exports.GlobalEnum = globalEnum;
+exports.GlobalHooks = index;
 exports.MonitorCenter = MonitorCenter;
 exports.MonitorConsumer = MonitorConsumer;
 exports.MonitorProvider = MonitorProvider;

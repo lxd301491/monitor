@@ -1,8 +1,6 @@
 import { MonitorProvider } from "./MonitorProvider";
 import { MonitorConsumer } from "./MonitorConsumer";
 import { StoreArea } from "./storeArea";
-import * as hooks from "./hooks/index";
-
 
 export class MonitorCenter {
   private providers: Array<MonitorProvider> = [];
@@ -25,13 +23,5 @@ export class MonitorCenter {
   subscribe(consumer: MonitorConsumer): MonitorConsumer {
     this.consumers.push(consumer);
     return consumer;
-  }
-
-  launchHook(hookType: hooks.HOOK_TYPE, instanceParameters: any[]): any {
-    let greeter: any = (<any>hooks)[hookType].getInstance.apply(
-      (<any>hooks)[hookType],
-      instanceParameters
-    );
-    return greeter;
   }
 }
