@@ -38,5 +38,7 @@
     "pa-monitor"
   ],
   "main": "dist/monitor.cjs.js",
-  "module": "dist/monitor.esm.js"
+  "module": "dist/monitor.esm.js",
+  "typings": "types/index.d.ts",
+  "unpkg": "dist/monitor.js"
 }
