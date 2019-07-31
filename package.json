@@ -1,8 +1,7 @@
 {
   "name": "pa-monitor",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "```\r npm install pa-monitor --save-dev",
-  "main": "src/index.ts",
   "scripts": {
     "build": "node rollup.config.js",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -37,5 +36,7 @@
   "keywords": [
     "monitor",
     "pa-monitor"
-  ]
+  ],
+  "main": "dist/monitor.cjs.js",
+  "module": "dist/monitor.esm.js"
 }
