@@ -33,4 +33,8 @@ export abstract class AbstractHook {
   getConsumer(): MonitorConsumer {
     return this.consumer;
   }
+
+  abstract watch(): void;
+
+  abstract unwatch(): void;
 }

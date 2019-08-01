@@ -7,17 +7,14 @@
     <title>Document</title>
     <script src="../dist/monitor.js"></script>
   </head>
-  <body></body>
+  <body>
+    <img src="http://www.baidu.com/1.gif">
+  </body>
   <script>
-    var center = new PAMonitor.MonitorCenter();
-    var globalErrorHook = center.launchHook(
-      PAMonitor.HOOK_TYPE.GlobalErrorHook,
-      [center, "http://www.baidu.com"]
-    );
-    var uncaughtHook = center.launchHook(PAMonitor.HOOK_TYPE.UncaughtHook, [
-      center,
-      "http://www.baidu.com"
-    ]);
+    var center = new PAMonitor.MonitorCenter("app");
+    PAMonitor.GlobalHooks.UncaughtHook.getInstance(center, "https://www.baidu.com").watch();
+    PAMonitor.GlobalHooks.GlobalErrorHook.getInstance(center, "https://www.baidu.com").watch();
     Promise.reject("112");
+    var b = c.d;
   </script>
 </html>

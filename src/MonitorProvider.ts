@@ -61,6 +61,7 @@ export class MonitorProvider {
   }
 
   async track(params: any, limits: any = {}) {
+    console.log(`MonitorProvider::track ${this.handler}`, params, limits);
     let emitObj: any = {};
     this.eternals.forEach(async (value, key) => {
       emitObj[key] = await value.toString();

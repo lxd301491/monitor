@@ -11,16 +11,18 @@ export class MonitorCenter {
     this.store = new StoreArea(appName);
   }
 
-  getStoreIns() {
+  getStoreInstance() {
     return this.store;
   }
 
   register(provider: MonitorProvider): MonitorProvider {
+    provider.mountStore(this.store);
     this.providers.push(provider);
     return provider;
   }
 
   subscribe(consumer: MonitorConsumer): MonitorConsumer {
+    consumer.mountStore(this.store);
     this.consumers.push(consumer);
     return consumer;
   }

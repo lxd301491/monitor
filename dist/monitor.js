@@ -152,16 +152,17 @@
             }
         };
         StoreArea.prototype.store = function (storeName, point) {
-            if (this.storage.has(storeName)) {
-                var arrStore = this.storage.get(storeName);
-                if (arrStore) {
-                    point.demandId = storeName + "_" + Math.random().toString(32).substring(2) + new Date().getTime();
-                    arrStore.push(point);
-                    if (this.localization) {
-                        this.localization.setItem("" + this.appName, JSON.stringify(__spread(this.storage)));
-                    }
-                    return true;
+            if (!this.storage.has(storeName)) {
+                this.createStore(storeName);
+            }
+            var arrStore = this.storage.get(storeName);
+            if (arrStore) {
+                point.demandId = storeName + "_" + Math.random().toString(32).substring(2) + new Date().getTime();
+                arrStore.push(point);
+                if (this.localization) {
+                    this.localization.setItem("" + this.appName, JSON.stringify(__spread(this.storage)));
                 }
+                return true;
             }
             return false;
         };
@@ -174,14 +175,16 @@
             this.consumers = [];
             this.store = new StoreArea(appName);
         }
-        MonitorCenter.prototype.getStoreIns = function () {
+        MonitorCenter.prototype.getStoreInstance = function () {
             return this.store;
         };
         MonitorCenter.prototype.register = function (provider) {
+            provider.mountStore(this.store);
             this.providers.push(provider);
             return provider;
         };
         MonitorCenter.prototype.subscribe = function (consumer) {
+            consumer.mountStore(this.store);
             this.consumers.push(consumer);
             return consumer;
         };
@@ -386,6 +389,7 @@
         };
         MonitorConsumer.prototype.start = function () {
             var _this = this;
+            console.log("MonitorConsumer::consume " + this.handler + " " + this.emitType);
             if (!this.timer) {
                 this.timer = window.setInterval(function () {
                     if (_this.store) {
@@ -398,6 +402,7 @@
             }
         };
         MonitorConsumer.prototype.pause = function () {
+            console.log("MonitorConsumer::consume " + this.handler + " " + this.emitType);
             clearInterval(this.timer);
             this.timer = undefined;
         };
@@ -407,60 +412,63 @@
                 return __generator(this, function (_b) {
                     switch (_b.label) {
                         case 0:
-                            _b.trys.push([0, 13, 14, 15]);
+                            console.log("MonitorConsumer::consume " + this.handler + " " + this.emitType, point);
+                            _b.label = 1;
+                        case 1:
+                            _b.trys.push([1, 14, 15, 16]);
                             _a = this.emitType;
                             switch (_a) {
-                                case EMIT_TYPE.IMAGE: return [3 /*break*/, 1];
-                                case EMIT_TYPE.XHR: return [3 /*break*/, 3];
-                                case EMIT_TYPE.FETCH: return [3 /*break*/, 5];
-                                case EMIT_TYPE.WEBTRENDS_VISIT: return [3 /*break*/, 7];
-                                case EMIT_TYPE.WEBTRENDS_CLICK: return [3 /*break*/, 8];
-                                case EMIT_TYPE.CUSTOM: return [3 /*break*/, 9];
+                                case EMIT_TYPE.IMAGE: return [3 /*break*/, 2];
+                                case EMIT_TYPE.XHR: return [3 /*break*/, 4];
+                                case EMIT_TYPE.FETCH: return [3 /*break*/, 6];
+                                case EMIT_TYPE.WEBTRENDS_VISIT: return [3 /*break*/, 8];
+                                case EMIT_TYPE.WEBTRENDS_CLICK: return [3 /*break*/, 9];
+                                case EMIT_TYPE.CUSTOM: return [3 /*break*/, 10];
                             }
-                            return [3 /*break*/, 11];
-                        case 1: return [4 /*yield*/, this.imageConsume(point)];
-                        case 2:
-                            _b.sent();
                             return [3 /*break*/, 12];
-                        case 3: return [4 /*yield*/, this.xhrConsume(point)];
-                        case 4:
+                        case 2: return [4 /*yield*/, this.imageConsume(point)];
+                        case 3:
                             _b.sent();
-                            return [3 /*break*/, 12];
-                        case 5: return [4 /*yield*/, this.fetchConsume(point)];
-                        case 6:
+                            return [3 /*break*/, 13];
+                        case 4: return [4 /*yield*/, this.xhrConsume(point)];
+                        case 5:
                             _b.sent();
-                            return [3 /*break*/, 12];
+                            return [3 /*break*/, 13];
+                        case 6: return [4 /*yield*/, this.fetchConsume(point)];
                         case 7:
-                            {
-                                this.visitConsume(point);
-                                return [3 /*break*/, 12];
-                            }
-                            _b.label = 8;
+                            _b.sent();
+                            return [3 /*break*/, 13];
                         case 8:
                             {
-                                this.clickConsume(point);
-                                return [3 /*break*/, 12];
+                                this.visitConsume(point);
+                                return [3 /*break*/, 13];
                             }
                             _b.label = 9;
                         case 9:
-                            if (!this.emitFunc) return [3 /*break*/, 11];
-                            return [4 /*yield*/, this.emitFunc(point)];
+                            {
+                                this.clickConsume(point);
+                                return [3 /*break*/, 13];
+                            }
+                            _b.label = 10;
                         case 10:
-                            _b.sent();
-                            return [3 /*break*/, 12];
+                            if (!this.emitFunc) return [3 /*break*/, 12];
+                            return [4 /*yield*/, this.emitFunc(point)];
                         case 11:
+                            _b.sent();
+                            return [3 /*break*/, 13];
+                        case 12:
                             this.imageConsume(point);
-                            _b.label = 12;
-                        case 12: return [3 /*break*/, 15];
-                        case 13:
+                            _b.label = 13;
+                        case 13: return [3 /*break*/, 16];
+                        case 14:
                             err_1 = _b.sent();
                             this.abnormalBreaker.count();
-                            return [3 /*break*/, 15];
-                        case 14:
+                            return [3 /*break*/, 16];
+                        case 15:
                             if (this.store)
                                 this.store.remand(point.demandId);
                             return [7 /*endfinally*/];
-                        case 15: return [2 /*return*/];
+                        case 16: return [2 /*return*/];
                     }
                 });
             });
@@ -775,6 +783,7 @@
                 return __generator(this, function (_e) {
                     switch (_e.label) {
                         case 0:
+                            console.log("MonitorProvider::track " + this.handler, params, limits);
                             emitObj = {};
                             this.eternals.forEach(function (value, key) { return __awaiter(_this, void 0, void 0, function () {
                                 var _a, _b;
@@ -845,134 +854,165 @@
         function AladdinHook(center, api, aladdin) {
             var _this = _super.call(this, center, "alddinAbnormal", api) || this;
             _this.timers = [];
-            aladdin.on("call", function (params) {
-                var args = params.args, callId = params.callId;
-                if (args.filter(function (item) {
-                    return typeof item === "function";
-                }).length > 0) {
-                    _this.timers.push({
-                        callId: callId,
-                        args: args,
-                        timestamp: new Date().getTime(),
-                        handler: setTimeout(function () {
-                            _this.provider.track({
-                                actionLevel: ACTION_LEVEL.WARNING,
-                                action: args[0].url + " 20000+",
-                                actionGroup: ACTION_GROUP.TIMEOUT
-                            });
-                        }, 20000)
-                    });
-                }
-            });
-            aladdin.on("callback", function (params) {
-                var callId = params.handlerKey.split("_")[0];
-                var timer = _this.timers.filter(function (item) {
-                    return item.callId === callId;
-                });
-                if (timer.length > 0)
-                    timer = timer[0];
-                clearTimeout(timer.handler);
-                var duration = new Date().getTime() - timer.timestamp;
-                if (duration > 5000) {
-                    _this.provider.track({
-                        actionLevel: ACTION_LEVEL.WARNING,
-                        action: timer.args[0].url + " " + duration,
-                        actionGroup: ACTION_GROUP.PERFORMANCE
-                    });
-                }
-            });
+            _this.aladdin = aladdin;
             return _this;
         }
+        AladdinHook.prototype.callListener = function (params) {
+            var _this = this;
+            var action = params.action, args = params.args, callId = params.callId;
+            if (args.filter(function (item) {
+                return typeof item === "function";
+            }).length > 0 && !['getLocation', 'setWatermark'].includes(action)) {
+                this.timers.push({
+                    callId: callId,
+                    args: args,
+                    timestamp: new Date().getTime(),
+                    handler: setTimeout(function () {
+                        _this.provider.track({
+                            actionLevel: ACTION_LEVEL.CARSH,
+                            action: args[0].url + " 20000+",
+                            actionGroup: ACTION_GROUP.TIMEOUT
+                        });
+                    }, 20000)
+                });
+            }
+        };
+        AladdinHook.prototype.callbackListener = function (params) {
+            var callId = params.handlerKey.split("_")[0];
+            var timer = this.timers.filter(function (item) {
+                return item.callId === callId;
+            });
+            if (timer.length > 0)
+                timer = timer[0];
+            clearTimeout(timer.handler);
+            var duration = new Date().getTime() - timer.timestamp;
+            if (duration > 5000) {
+                this.provider.track({
+                    actionLevel: ACTION_LEVEL.WARNING,
+                    action: timer.args[0].url + " " + duration,
+                    actionGroup: ACTION_GROUP.PERFORMANCE
+                });
+            }
+        };
+        AladdinHook.prototype.watch = function () {
+            this.aladdin.on("call", this.callListener.bind(this));
+            this.aladdin.on("callback", this.callbackListener.bind(this));
+            if (process.env.NODE_ENV === 'development') {
+                this.aladdin.on("error", function (error) {
+                    console.log('aladdin event meet error:', JSON.stringify(error));
+                });
+            }
+        };
+        AladdinHook.prototype.unwatch = function () {
+            this.aladdin.off("call", this.callListener);
+            this.aladdin.off("callback", this.callbackListener);
+            this.timers.forEach(function (timer) {
+                clearTimeout(timer.handler);
+            });
+            this.timers = [];
+        };
         return AladdinHook;
     }(AbstractHook));
 
     var GlobalErrorHook = /** @class */ (function (_super) {
         __extends(GlobalErrorHook, _super);
         function GlobalErrorHook(center, api) {
-            var _this = _super.call(this, center, "windowError", api) || this;
-            var self = _this;
-            window.addEventListener("error", function (ev) {
-                if (ev.target instanceof HTMLElement &&
-                    ["img", "script", "link"].includes(ev.target.tagName.toLocaleLowerCase())) {
-                    self.provider.track({
-                        actionLevel: ACTION_LEVEL.ERROR,
-                        action: "\u8D44\u6E90\u52A0\u8F7D\u5F02\u5E38 " + ev.target.getAttribute("src"),
-                        actionGroup: ACTION_GROUP.GLOBAL_ERROR
-                    });
-                }
-                else {
-                    var stack = "";
-                    if (!!ev.error && !!ev.error.stack) {
-                        // 如果浏览器有堆栈信息 直接使用
-                        stack = ev.error.stack.toString();
-                    }
-                    else if (arguments) {
-                        // 尝试通过callee拿堆栈信息
-                        var ext = [];
-                        // eslint-disable-next-line no-caller
-                        var f = arguments.callee.caller;
-                        var c = 3;
-                        // 这里只拿三层堆栈信息
-                        while (f && --c > 0) {
-                            ext.push(f.toString());
-                            if (f === f.caller) {
-                                break; // 如果有环
-                            }
-                            f = f.caller;
-                        }
-                        stack = ext.join(",");
-                    }
-                    self.provider.track({
-                        actionLevel: ACTION_LEVEL.ERROR,
-                        action: "js\u5168\u5C40\u5F02\u5E38",
-                        actionGroup: ACTION_GROUP.GLOBAL_ERROR,
-                        jsErrorLineNo: ev.lineno,
-                        jsErrorColumnNo: ev.colno,
-                        jsErrorMessage: ev.message,
-                        jsErrorFilename: ev.filename,
-                        jsErrorStack: stack
-                    });
-                }
-            });
-            return _this;
+            return _super.call(this, center, "windowError", api) || this;
         }
+        GlobalErrorHook.prototype.listener = function (evt) {
+            if (evt.target instanceof HTMLElement &&
+                ["img", "script", "link"].includes(evt.target.tagName.toLocaleLowerCase())) {
+                this.provider.track({
+                    actionLevel: ACTION_LEVEL.ERROR,
+                    action: "\u8D44\u6E90\u52A0\u8F7D\u5F02\u5E38 " + evt.target.getAttribute("src"),
+                    actionGroup: ACTION_GROUP.GLOBAL_ERROR
+                });
+            }
+            else {
+                var stack = "";
+                if (!!evt.error && !!evt.error.stack) {
+                    // 如果浏览器有堆栈信息 直接使用
+                    stack = evt.error.stack.toString();
+                }
+                else if (arguments) {
+                    // 尝试通过callee拿堆栈信息
+                    var ext = [];
+                    // eslint-disable-next-line no-caller
+                    var f = arguments.callee.caller;
+                    var c = 3;
+                    // 这里只拿三层堆栈信息
+                    while (f && --c > 0) {
+                        ext.push(f.toString());
+                        if (f === f.caller) {
+                            break; // 如果有环
+                        }
+                        f = f.caller;
+                    }
+                    stack = ext.join(",");
+                }
+                this.provider.track({
+                    actionLevel: ACTION_LEVEL.ERROR,
+                    action: "js\u5168\u5C40\u5F02\u5E38",
+                    actionGroup: ACTION_GROUP.GLOBAL_ERROR,
+                    jsErrorLineNo: evt.lineno,
+                    jsErrorColumnNo: evt.colno,
+                    jsErrorMessage: evt.message,
+                    jsErrorFilename: evt.filename,
+                    jsErrorStack: stack
+                });
+            }
+        };
+        GlobalErrorHook.prototype.watch = function () {
+            window.addEventListener("error", this.listener.bind(this));
+        };
+        GlobalErrorHook.prototype.unwatch = function () {
+            window.removeEventListener("error", this.listener.bind(this));
+        };
         return GlobalErrorHook;
     }(AbstractHook));
 
     var UIEventHook = /** @class */ (function (_super) {
         __extends(UIEventHook, _super);
         function UIEventHook(center, api) {
-            var _this = _super.call(this, center, "uiEvent", api) || this;
-            var self = _this;
-            document.addEventListener("click", function (ev) {
-                self.provider.track({
-                    otitle: "123",
-                    olabel: "12333",
-                    opts: {
-                        "WT.adb": "123"
-                    }
-                });
-            });
-            return _this;
+            return _super.call(this, center, "uiEvent", api) || this;
         }
+        UIEventHook.prototype.listener = function (ev) {
+            this.provider.track({
+                otitle: "123",
+                olabel: "12333",
+                opts: {
+                    "WT.adb": "123"
+                }
+            });
+        };
+        UIEventHook.prototype.watch = function () {
+            document.addEventListener("click", this.listener.bind(this));
+        };
+        UIEventHook.prototype.unwatch = function () {
+            document.removeEventListener("click", this.listener.bind(this));
+        };
         return UIEventHook;
     }(AbstractHook));
 
     var UncaughtHook = /** @class */ (function (_super) {
         __extends(UncaughtHook, _super);
         function UncaughtHook(center, api) {
-            var _this = _super.call(this, center, "windowUncaught", api) || this;
-            var self = _this;
-            window.addEventListener("unhandledrejection", function (ev) {
-                self.provider.track({
-                    level: ACTION_LEVEL.ERROR,
-                    action: "\u5168\u5C40\u672A\u6355\u83B7\u5F02\u5E38",
-                    actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,
-                    jsErrorStack: ev.reason
-                });
-            });
-            return _this;
+            return _super.call(this, center, "windowUncaught", api) || this;
         }
+        UncaughtHook.prototype.listener = function (ev) {
+            this.provider.track({
+                level: ACTION_LEVEL.ERROR,
+                action: "\u5168\u5C40\u672A\u6355\u83B7\u5F02\u5E38",
+                actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,
+                jsErrorStack: ev.reason
+            });
+        };
+        UncaughtHook.prototype.watch = function () {
+            window.addEventListener("unhandledrejection", this.listener.bind(this));
+        };
+        UncaughtHook.prototype.unwatch = function () {
+            window.removeEventListener("unhandledrejection", this.listener.bind(this));
+        };
         return UncaughtHook;
     }(AbstractHook));
 
@@ -980,7 +1020,12 @@
         __extends(VueHook, _super);
         function VueHook(center, api, Vue) {
             var _this = _super.call(this, center, "vueError", api) || this;
-            Vue.config.errorHandler = function (err, vm, info) {
+            _this._vue = Vue.config;
+            return _this;
+        }
+        VueHook.prototype.watch = function () {
+            var _this = this;
+            this._vue.errorHandler = function (err, vm, info) {
                 var comFloor = "";
                 if (vm) {
                     var cur = vm;
@@ -999,8 +1044,10 @@
                     jsErrorStack: err.stack
                 });
             };
-            return _this;
-        }
+        };
+        VueHook.prototype.unwatch = function () {
+            this._vue.errorHandler = undefined;
+        };
         return VueHook;
     }(AbstractHook));
 
@@ -1012,6 +1059,7 @@
         VueHook: VueHook
     };
 
+    exports.CircuitBreaker = CircuitBreaker;
     exports.GlobalEnum = globalEnum;
     exports.GlobalHooks = index;
     exports.MonitorCenter = MonitorCenter;

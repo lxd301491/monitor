@@ -3,9 +3,15 @@ import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorCenter } from "../MonitorCenter";
 
 export class VueHook extends AbstractHook {
-  constructor(center: MonitorCenter, api: string, Vue: any) {
+  private _vue: any;
+
+  protected constructor(center: MonitorCenter, api: string, Vue: any) {
     super(center, "vueError", api);
-    Vue.config.errorHandler = (err: any, vm: any, info: string) => {
+    this._vue = Vue.config;
+  }
+
+  watch(): void {
+    this._vue.errorHandler = (err: any, vm: any, info: string) => {
       let comFloor: string = "";
       if (vm) {
         let cur = vm;
@@ -24,5 +30,8 @@ export class VueHook extends AbstractHook {
         jsErrorStack: err.stack
       });
     };
+  }
+  unwatch(): void {
+    this._vue.errorHandler = undefined;
   }
 }

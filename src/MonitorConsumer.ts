@@ -47,6 +47,7 @@ export class MonitorConsumer {
   }
 
   start() {
+    console.log(`MonitorConsumer::consume ${this.handler} ${this.emitType}`);
     if (!this.timer) {
       this.timer = window.setInterval(() => {
         if (this.store) {
@@ -60,11 +61,13 @@ export class MonitorConsumer {
   }
 
   pause() {
+    console.log(`MonitorConsumer::consume ${this.handler} ${this.emitType}`);
     clearInterval(this.timer);
     this.timer = undefined;
   }
 
   private async consume(point: any): Promise<any> {
+    console.log(`MonitorConsumer::consume ${this.handler} ${this.emitType}`, point);
     try {
       switch (this.emitType) {
         case EMIT_TYPE.IMAGE: {

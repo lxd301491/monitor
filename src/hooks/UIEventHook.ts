@@ -2,17 +2,25 @@ import { AbstractHook } from "./AbstractHook";
 import { MonitorCenter } from "../MonitorCenter";
 
 export class UIEventHook extends AbstractHook {
-  constructor(center: MonitorCenter, api: string) {
+  protected constructor(center: MonitorCenter, api: string) {
     super(center, "uiEvent", api);
-    let self = this;
-    document.addEventListener("click", function(ev: UIEvent) {
-      self.provider.track({
-        otitle: "123",
-        olabel: "12333",
-        opts: {
-          "WT.adb": "123"
-        }
-      });
+  }
+
+  private listener(ev: UIEvent) {
+    this.provider.track({
+      otitle: "123",
+      olabel: "12333",
+      opts: {
+        "WT.adb": "123"
+      }
     });
+  }
+
+  watch(): void {
+    document.addEventListener("click", this.listener.bind(this));
+  }
+
+  unwatch(): void {
+    document.removeEventListener("click", this.listener.bind(this));
   }
 }

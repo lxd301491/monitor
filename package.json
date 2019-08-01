@@ -1,6 +1,6 @@
 {
   "name": "pa-monitor",
-  "version": "1.0.4",
+  "version": "1.0.7",
   "description": "```\r npm install pa-monitor --save-dev",
   "scripts": {
     "build": "node rollup.config.js",

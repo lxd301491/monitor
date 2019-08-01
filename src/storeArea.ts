@@ -63,16 +63,17 @@ export class StoreArea {
   }
 
   store(storeName: string, point: any): boolean {
-    if (this.storage.has(storeName)) {
-      let arrStore: Array<any> | undefined = this.storage.get(storeName);
-      if (arrStore) {
-        point.demandId = `${storeName}_${Math.random().toString(32).substring(2)}${new Date().getTime()}`;
-        arrStore.push(point);
-        if (this.localization) {
-          this.localization.setItem(`${this.appName}`, JSON.stringify([...this.storage]));
-        }
-        return true;
+    if (!this.storage.has(storeName)) {
+      this.createStore(storeName);
+    }
+    let arrStore: Array<any> | undefined = this.storage.get(storeName);
+    if (arrStore) {
+      point.demandId = `${storeName}_${Math.random().toString(32).substring(2)}${new Date().getTime()}`;
+      arrStore.push(point);
+      if (this.localization) {
+        this.localization.setItem(`${this.appName}`, JSON.stringify([...this.storage]));
       }
+      return true;
     }
     return false;
   }
