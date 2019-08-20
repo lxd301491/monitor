@@ -1,6 +1,9 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
 import { EMIT_TYPE } from "./configs/globalEnum";
 import { StoreArea } from "./storeArea";
+import * as _ from "lodash";
+import { beforeConsume, afterConsume } from "./decorators/lifeCycle";
+// const pako = require("pako");
 
 declare global {
   interface Window {
@@ -26,10 +29,12 @@ export class MonitorConsumer {
   );
   private emitType: EMIT_TYPE = EMIT_TYPE.IMAGE;
   private timer?: number;
+  private bundleSize?: number;
 
-  constructor(handler: string, api: string, emitType?: EMIT_TYPE) {
+  constructor(handler: string, api: string, bunderSize?: number, emitType?: EMIT_TYPE) {
     this.handler = handler;
     this.api = api;
+    this.bundleSize = bunderSize;
     if (emitType) this.emitType = emitType;
   }
 
@@ -47,13 +52,12 @@ export class MonitorConsumer {
   }
 
   start() {
-    console.log(`MonitorConsumer::consume ${this.handler} ${this.emitType}`);
     if (!this.timer) {
       this.timer = window.setInterval(() => {
         if (this.store) {
-          let point = this.store.demand(this.handler)
-          if (point) {
-            this.consume(point);
+          let params = this.store.demand(this.handler, this.bundleSize);
+          if (params) {
+            this.consume(params);
           }
         }
       }, 20);
@@ -61,48 +65,45 @@ export class MonitorConsumer {
   }
 
   pause() {
-    console.log(`MonitorConsumer::consume ${this.handler} ${this.emitType}`);
     clearInterval(this.timer);
     this.timer = undefined;
   }
 
-  private async consume(point: any): Promise<any> {
-    console.log(`MonitorConsumer::consume ${this.handler} ${this.emitType}`, point);
+  @beforeConsume
+  @afterConsume
+  private async consume(params: any): Promise<any> {
+    // console.log(_.VERSION);
+    // params.points = pako.gzip(JSON.stringify(params.points) , {to: "string"});
+    let resp;
     try {
       switch (this.emitType) {
         case EMIT_TYPE.IMAGE: {
-          await this.imageConsume(point);
+          resp = await this.imageConsume(params.points);
           break;
         }
         case EMIT_TYPE.XHR: {
-          await this.xhrConsume(point);
+          resp = await this.xhrConsume(params.points);
           break;
         }
         case EMIT_TYPE.FETCH: {
-          await this.fetchConsume(point);
-          break;
-        }
-        case EMIT_TYPE.WEBTRENDS_VISIT: {
-          this.visitConsume(point);
-          break;
-        }
-        case EMIT_TYPE.WEBTRENDS_CLICK: {
-          this.clickConsume(point);
+          resp = await this.fetchConsume(params.points);
           break;
         }
         case EMIT_TYPE.CUSTOM: {
           if (this.emitFunc) {
-            await this.emitFunc(point);
+            resp = await this.emitFunc(params.points);
             break;
           }
         }
         default:
-          this.imageConsume(point);
+          resp = await this.imageConsume(params.points);
       }
     } catch (err) {
       this.abnormalBreaker.count();
+      resp = err;
     } finally {
-      if (this.store) this.store.remand(point.demandId);
+      if (this.store) this.store.remand(params.demandId);
+      return resp;
     }
   }
 
@@ -118,17 +119,19 @@ export class MonitorConsumer {
   private async imageConsume(params: any) {
     this.frequencyBreaker.count();
     let img = new Image();
-    img.onerror = () => {
-      this.abnormalBreaker.count();
-      return;
-    };
-    img.onload = () => {
-      return;
-    };
-    img.onabort = () => {
-      return;
-    };
-    img.src = this.api + "?" + this.obj2Search(params);
+    return await new Promise((resolve, reject) => {
+      img.onerror = (err) => {
+        this.abnormalBreaker.count();
+        reject(err);
+      };
+      img.onload = (resp) => {
+        resolve(resp);
+      };
+      img.onabort = (resp) => {
+        reject(resp);
+      };
+      img.src = this.api + "?" + this.obj2Search(params);
+    })
   }
 
   private async xhrConsume(params: any) {
@@ -137,31 +140,32 @@ export class MonitorConsumer {
       let xhr: XMLHttpRequest = new XMLHttpRequest();
       xhr.open("POST", this.api, true);
       xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-      xhr.onload = () => {
-        return;
-      };
-      xhr.onabort = () => {
-        return;
-      };
-      xhr.onerror = (err) => {
-        throw err;
-      };
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState !== 4 || xhr.status !== 200) {
-          this.abnormalBreaker.count();
-        }
-        return;
-      };
-      xhr.send(this.obj2Search(params));
+      return await new Promise((resolve, reject) => {
+        xhr.onload = (resp) => {
+          resolve(resp);
+        };
+        xhr.onabort = (resp) => {
+          resolve(resp);
+        };
+        xhr.onerror = (err) => {
+          reject(err);
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState !== 4 || xhr.status !== 200) {
+            reject(xhr.readyState);
+          }
+        };
+        xhr.send(this.obj2Search(params));
+      });
     } else {
-      return;
+      return "XMLHttpRequest is not available";
     }
   }
 
   private async fetchConsume(params: any) {
     if (fetch) {
       this.frequencyBreaker.count();
-      fetch(this.api, {
+      return await fetch(this.api, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
@@ -177,23 +181,7 @@ export class MonitorConsumer {
           return;
         });
     } else {
-      return;
+      return "fetch is not available";
     }
-  }
-
-  private visitConsume(params: any): void {
-    this.frequencyBreaker.count();
-    window.WTjson = window.WTjson || {};
-    for (let key in params) {
-      window.WTjson[key] = params[key];
-    }
-    window._tag.ready(() => {
-      window._tag.init();
-    });
-  }
-
-  private clickConsume(params: any): void {
-    this.frequencyBreaker.count();
-    window._tag.trackEvent(params.otitle, params.olabel, params.opts);
   }
 }

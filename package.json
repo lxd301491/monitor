@@ -13,8 +13,10 @@
     "@babel/core": "^7.5.4",
     "@babel/preset-env": "^7.5.4",
     "@babel/preset-typescript": "^7.3.3",
+    "pako": "^1.0.10",
     "rollup": "^1.16.7",
     "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^10.0.2",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-typescript2": "^0.21.2",
     "ts-lint": "^4.5.1",
@@ -24,7 +26,11 @@
   "directories": {
     "example": "example"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@types/lodash": "^4.14.136",
+    "@types/mz": "0.0.32",
+    "@types/pako": "^1.0.1"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lxd301491/monitor.git"

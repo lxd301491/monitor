@@ -8,10 +8,25 @@
     <script src="../dist/monitor.js"></script>
   </head>
   <body>
-    <img src="http://www.baidu.com/1.gif">
+    <!-- <img src="http://www.baidu.com/1.gif"> -->
   </body>
   <script>
-    var center = new PAMonitor.MonitorCenter("app");
+    var center = PAMonitor.MonitorCenter.getInstance();
+    center.init("app", {
+      beforeTrack: function (args) {
+        console.log("beforeTrack", this.handler, args);
+      },
+      afterTrack: function (args) {
+        console.log("afterTrack", this.handler, args);
+      },
+      beforeConsume: function (args) {
+        console.log("beforeConsume", this.handler, args);
+      },
+      afterConsume: function (args) {
+        console.log("afterConsume", this.handler, args);
+      }
+    })
+    center.getStoreInstance().initlize(undefined, undefined, localStorage);
     PAMonitor.GlobalHooks.UncaughtHook.getInstance(center, "https://www.baidu.com").watch();
     PAMonitor.GlobalHooks.GlobalErrorHook.getInstance(center, "https://www.baidu.com").watch();
     Promise.reject("112");

@@ -31,6 +31,7 @@ export class VueHook extends AbstractHook {
       });
     };
   }
+  
   unwatch(): void {
     this._vue.errorHandler = undefined;
   }

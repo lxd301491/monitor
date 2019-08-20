@@ -8,6 +8,8 @@ export class GlobalErrorHook extends AbstractHook {
   }
 
   private listener (evt: ErrorEvent) {
+    evt.preventDefault();
+    evt.stopPropagation();
     if (
       evt.target instanceof HTMLElement &&
       ["img", "script", "link"].includes(

@@ -27,6 +27,13 @@ function __extends(d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 }
 
+function __decorate(decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+}
+
 function __awaiter(thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -96,22 +103,24 @@ function __spread() {
  * localization 本地化对象，必须实现getItem和setItem方法
  */
 var StoreArea = /** @class */ (function () {
-    function StoreArea(appName, maxSize, maxWidth, localization) {
+    function StoreArea(appName) {
         this.maxSize = 6;
         this.width = 0;
         this.maxWidth = 6;
         this.storage = new Map();
         this.demandList = [];
         this.appName = appName;
+    }
+    StoreArea.prototype.initlize = function (maxSize, maxWidth, localization) {
         if (maxSize)
             this.maxSize = maxSize;
         if (maxWidth)
             this.maxWidth = maxWidth;
         if (localization) {
             this.localization = localization;
-            this.storage = new Map(JSON.parse(this.localization.getItem(appName) || ''));
+            this.storage = new Map(JSON.parse(this.localization.getItem(this.appName) || '[]'));
         }
-    }
+    };
     StoreArea.prototype.createStore = function (storeName) {
         if (this.storage.has(storeName) && this.storage.size >= this.maxSize) {
             return;
@@ -123,18 +132,36 @@ var StoreArea = /** @class */ (function () {
             this.storage.delete(storeName);
         }
     };
-    StoreArea.prototype.demand = function (storeName) {
+    StoreArea.prototype.demandable = function (storeName, bundleSize) {
         if (this.storage.has(storeName) && this.width < this.maxWidth) {
             var arrStore = this.storage.get(storeName);
-            if (arrStore && arrStore.length > 0) {
-                this.width++;
-                var point = arrStore.shift();
-                this.demandList.push(point.demandId);
-                if (this.localization) {
-                    this.localization.setItem("" + this.appName, JSON.stringify(__spread(this.storage)));
-                }
-                return point;
+            if (arrStore) {
+                return arrStore.length >= bundleSize;
             }
+        }
+        return false;
+    };
+    StoreArea.prototype.demand = function (storeName, bundleSize) {
+        bundleSize = bundleSize || 1;
+        if (!this.demandable(storeName, bundleSize))
+            return null;
+        var arrStore = this.storage.get(storeName);
+        if (arrStore) {
+            this.width++;
+            var points = [];
+            while (bundleSize > 0) {
+                points.push(arrStore.shift());
+                bundleSize--;
+            }
+            var demandId = storeName + "_" + Math.random().toString(32).substring(2) + new Date().getTime();
+            this.demandList.push(demandId);
+            if (this.localization) {
+                this.localization.setItem("" + this.appName, JSON.stringify(__spread(this.storage)));
+            }
+            return {
+                demandId: demandId,
+                points: points
+            };
         }
         return null;
     };
@@ -151,7 +178,6 @@ var StoreArea = /** @class */ (function () {
         }
         var arrStore = this.storage.get(storeName);
         if (arrStore) {
-            point.demandId = storeName + "_" + Math.random().toString(32).substring(2) + new Date().getTime();
             arrStore.push(point);
             if (this.localization) {
                 this.localization.setItem("" + this.appName, JSON.stringify(__spread(this.storage)));
@@ -164,22 +190,38 @@ var StoreArea = /** @class */ (function () {
 }());
 
 var MonitorCenter = /** @class */ (function () {
-    function MonitorCenter(appName) {
+    function MonitorCenter() {
         this.providers = [];
         this.consumers = [];
-        this.store = new StoreArea(appName);
     }
+    MonitorCenter.getInstance = function () {
+        if (this._instance == null) {
+            this._instance = new MonitorCenter();
+        }
+        return this._instance;
+    };
+    MonitorCenter.prototype.init = function (appName, lifeCycle) {
+        this.store = new StoreArea(appName);
+        this.lifeCycle = lifeCycle ? lifeCycle : {};
+    };
+    MonitorCenter.prototype.getLifeCycle = function () {
+        return this.lifeCycle;
+    };
     MonitorCenter.prototype.getStoreInstance = function () {
         return this.store;
     };
     MonitorCenter.prototype.register = function (provider) {
-        provider.mountStore(this.store);
-        this.providers.push(provider);
+        if (this.store) {
+            provider.mountStore(this.store);
+            this.providers.push(provider);
+        }
         return provider;
     };
     MonitorCenter.prototype.subscribe = function (consumer) {
-        consumer.mountStore(this.store);
-        this.consumers.push(consumer);
+        if (this.store) {
+            consumer.mountStore(this.store);
+            this.consumers.push(consumer);
+        }
         return consumer;
     };
     return MonitorCenter;
@@ -359,13 +401,97 @@ var globalEnum = /*#__PURE__*/Object.freeze({
     get ACTION_GROUP () { return ACTION_GROUP; }
 });
 
+function beforeConsume(target, methodName, descriptor) {
+    return {
+        value: function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            var lifeCycle = MonitorCenter.getInstance().getLifeCycle();
+            if (lifeCycle && lifeCycle.beforeConsume) {
+                lifeCycle.beforeConsume.apply(this, args);
+            }
+            return descriptor.value.apply(this, args);
+        }
+    };
+}
+function afterConsume(target, methodName, descriptor) {
+    return {
+        value: function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            return __awaiter(this, void 0, void 0, function () {
+                var lifeCycle, result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            lifeCycle = MonitorCenter.getInstance().getLifeCycle();
+                            return [4 /*yield*/, descriptor.value.apply(this, args)];
+                        case 1:
+                            result = _a.sent();
+                            if (lifeCycle && lifeCycle.afterConsume) {
+                                lifeCycle.afterConsume.apply(this, [result]);
+                            }
+                            return [2 /*return*/, result];
+                    }
+                });
+            });
+        }
+    };
+}
+function beforeTrack(target, methodName, descriptor) {
+    return {
+        value: function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            var lifeCycle = MonitorCenter.getInstance().getLifeCycle();
+            if (lifeCycle && lifeCycle.beforeTrack) {
+                lifeCycle.beforeTrack.apply(this, args);
+            }
+            return descriptor.value.apply(this, args);
+        }
+    };
+}
+function afterTrack(target, methodName, descriptor) {
+    return {
+        value: function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            return __awaiter(this, void 0, void 0, function () {
+                var lifeCycle, result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            lifeCycle = MonitorCenter.getInstance().getLifeCycle();
+                            return [4 /*yield*/, descriptor.value.apply(this, args)];
+                        case 1:
+                            result = _a.sent();
+                            if (lifeCycle && lifeCycle.afterTrack) {
+                                lifeCycle.afterTrack.apply(this, [result]);
+                            }
+                            return [2 /*return*/, result];
+                    }
+                });
+            });
+        }
+    };
+}
+
 var MonitorConsumer = /** @class */ (function () {
-    function MonitorConsumer(handler, api, emitType) {
+    function MonitorConsumer(handler, api, bunderSize, emitType) {
         this.frequencyBreaker = new CircuitBreaker("60/60", 5 * 60, "30/60");
         this.abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60");
         this.emitType = EMIT_TYPE.IMAGE;
         this.handler = handler;
         this.api = api;
+        this.bundleSize = bunderSize;
         if (emitType)
             this.emitType = emitType;
     }
@@ -383,86 +509,69 @@ var MonitorConsumer = /** @class */ (function () {
     };
     MonitorConsumer.prototype.start = function () {
         var _this = this;
-        console.log("MonitorConsumer::consume " + this.handler + " " + this.emitType);
         if (!this.timer) {
             this.timer = window.setInterval(function () {
                 if (_this.store) {
-                    var point = _this.store.demand(_this.handler);
-                    if (point) {
-                        _this.consume(point);
+                    var params = _this.store.demand(_this.handler, _this.bundleSize);
+                    if (params) {
+                        _this.consume(params);
                     }
                 }
             }, 20);
         }
     };
     MonitorConsumer.prototype.pause = function () {
-        console.log("MonitorConsumer::consume " + this.handler + " " + this.emitType);
         clearInterval(this.timer);
         this.timer = undefined;
     };
-    MonitorConsumer.prototype.consume = function (point) {
+    MonitorConsumer.prototype.consume = function (params) {
         return __awaiter(this, void 0, void 0, function () {
-            var _a, err_1;
+            var resp, _a, err_1;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        console.log("MonitorConsumer::consume " + this.handler + " " + this.emitType, point);
-                        _b.label = 1;
-                    case 1:
-                        _b.trys.push([1, 14, 15, 16]);
+                        _b.trys.push([0, 12, 13, 14]);
                         _a = this.emitType;
                         switch (_a) {
-                            case EMIT_TYPE.IMAGE: return [3 /*break*/, 2];
-                            case EMIT_TYPE.XHR: return [3 /*break*/, 4];
-                            case EMIT_TYPE.FETCH: return [3 /*break*/, 6];
-                            case EMIT_TYPE.WEBTRENDS_VISIT: return [3 /*break*/, 8];
-                            case EMIT_TYPE.WEBTRENDS_CLICK: return [3 /*break*/, 9];
-                            case EMIT_TYPE.CUSTOM: return [3 /*break*/, 10];
+                            case EMIT_TYPE.IMAGE: return [3 /*break*/, 1];
+                            case EMIT_TYPE.XHR: return [3 /*break*/, 3];
+                            case EMIT_TYPE.FETCH: return [3 /*break*/, 5];
+                            case EMIT_TYPE.CUSTOM: return [3 /*break*/, 7];
                         }
-                        return [3 /*break*/, 12];
-                    case 2: return [4 /*yield*/, this.imageConsume(point)];
-                    case 3:
-                        _b.sent();
-                        return [3 /*break*/, 13];
-                    case 4: return [4 /*yield*/, this.xhrConsume(point)];
-                    case 5:
-                        _b.sent();
-                        return [3 /*break*/, 13];
-                    case 6: return [4 /*yield*/, this.fetchConsume(point)];
+                        return [3 /*break*/, 9];
+                    case 1: return [4 /*yield*/, this.imageConsume(params.points)];
+                    case 2:
+                        resp = _b.sent();
+                        return [3 /*break*/, 11];
+                    case 3: return [4 /*yield*/, this.xhrConsume(params.points)];
+                    case 4:
+                        resp = _b.sent();
+                        return [3 /*break*/, 11];
+                    case 5: return [4 /*yield*/, this.fetchConsume(params.points)];
+                    case 6:
+                        resp = _b.sent();
+                        return [3 /*break*/, 11];
                     case 7:
-                        _b.sent();
-                        return [3 /*break*/, 13];
+                        if (!this.emitFunc) return [3 /*break*/, 9];
+                        return [4 /*yield*/, this.emitFunc(params.points)];
                     case 8:
-                        {
-                            this.visitConsume(point);
-                            return [3 /*break*/, 13];
-                        }
-                        _b.label = 9;
-                    case 9:
-                        {
-                            this.clickConsume(point);
-                            return [3 /*break*/, 13];
-                        }
-                        _b.label = 10;
+                        resp = _b.sent();
+                        return [3 /*break*/, 11];
+                    case 9: return [4 /*yield*/, this.imageConsume(params.points)];
                     case 10:
-                        if (!this.emitFunc) return [3 /*break*/, 12];
-                        return [4 /*yield*/, this.emitFunc(point)];
-                    case 11:
-                        _b.sent();
-                        return [3 /*break*/, 13];
+                        resp = _b.sent();
+                        _b.label = 11;
+                    case 11: return [3 /*break*/, 14];
                     case 12:
-                        this.imageConsume(point);
-                        _b.label = 13;
-                    case 13: return [3 /*break*/, 16];
-                    case 14:
                         err_1 = _b.sent();
                         this.abnormalBreaker.count();
-                        return [3 /*break*/, 16];
-                    case 15:
+                        resp = err_1;
+                        return [3 /*break*/, 14];
+                    case 13:
                         if (this.store)
-                            this.store.remand(point.demandId);
-                        return [7 /*endfinally*/];
-                    case 16: return [2 /*return*/];
+                            this.store.remand(params.demandId);
+                        return [2 /*return*/, resp];
+                    case 14: return [2 /*return*/];
                 }
             });
         });
@@ -480,20 +589,25 @@ var MonitorConsumer = /** @class */ (function () {
             var img;
             var _this = this;
             return __generator(this, function (_a) {
-                this.frequencyBreaker.count();
-                img = new Image();
-                img.onerror = function () {
-                    _this.abnormalBreaker.count();
-                    return;
-                };
-                img.onload = function () {
-                    return;
-                };
-                img.onabort = function () {
-                    return;
-                };
-                img.src = this.api + "?" + this.obj2Search(params);
-                return [2 /*return*/];
+                switch (_a.label) {
+                    case 0:
+                        this.frequencyBreaker.count();
+                        img = new Image();
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                img.onerror = function (err) {
+                                    _this.abnormalBreaker.count();
+                                    reject(err);
+                                };
+                                img.onload = function (resp) {
+                                    resolve(resp);
+                                };
+                                img.onabort = function (resp) {
+                                    reject(resp);
+                                };
+                                img.src = _this.api + "?" + _this.obj2Search(params);
+                            })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
             });
         });
     };
@@ -502,77 +616,68 @@ var MonitorConsumer = /** @class */ (function () {
             var xhr_1;
             var _this = this;
             return __generator(this, function (_a) {
-                if (XMLHttpRequest) {
-                    this.frequencyBreaker.count();
-                    xhr_1 = new XMLHttpRequest();
-                    xhr_1.open("POST", this.api, true);
-                    xhr_1.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                    xhr_1.onload = function () {
-                        return;
-                    };
-                    xhr_1.onabort = function () {
-                        return;
-                    };
-                    xhr_1.onerror = function (err) {
-                        throw err;
-                    };
-                    xhr_1.onreadystatechange = function () {
-                        if (xhr_1.readyState !== 4 || xhr_1.status !== 200) {
-                            _this.abnormalBreaker.count();
-                        }
-                        return;
-                    };
-                    xhr_1.send(this.obj2Search(params));
+                switch (_a.label) {
+                    case 0:
+                        if (!XMLHttpRequest) return [3 /*break*/, 2];
+                        this.frequencyBreaker.count();
+                        xhr_1 = new XMLHttpRequest();
+                        xhr_1.open("POST", this.api, true);
+                        xhr_1.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                xhr_1.onload = function (resp) {
+                                    resolve(resp);
+                                };
+                                xhr_1.onabort = function (resp) {
+                                    resolve(resp);
+                                };
+                                xhr_1.onerror = function (err) {
+                                    reject(err);
+                                };
+                                xhr_1.onreadystatechange = function () {
+                                    if (xhr_1.readyState !== 4 || xhr_1.status !== 200) {
+                                        reject(xhr_1.readyState);
+                                    }
+                                };
+                                xhr_1.send(_this.obj2Search(params));
+                            })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                    case 2: return [2 /*return*/, "XMLHttpRequest is not available"];
                 }
-                else {
-                    return [2 /*return*/];
-                }
-                return [2 /*return*/];
             });
         });
     };
     MonitorConsumer.prototype.fetchConsume = function (params) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
-                if (fetch) {
-                    this.frequencyBreaker.count();
-                    fetch(this.api, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/x-www-form-urlencoded"
-                        },
-                        body: params,
-                        mode: "cors",
-                        cache: "no-cache"
-                    })
-                        .catch(function (err) {
-                        throw err;
-                    })
-                        .finally(function () {
-                        return;
-                    });
+                switch (_a.label) {
+                    case 0:
+                        if (!fetch) return [3 /*break*/, 2];
+                        this.frequencyBreaker.count();
+                        return [4 /*yield*/, fetch(this.api, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/x-www-form-urlencoded"
+                                },
+                                body: params,
+                                mode: "cors",
+                                cache: "no-cache"
+                            })
+                                .catch(function (err) {
+                                throw err;
+                            })
+                                .finally(function () {
+                                return;
+                            })];
+                    case 1: return [2 /*return*/, _a.sent()];
+                    case 2: return [2 /*return*/, "fetch is not available"];
                 }
-                else {
-                    return [2 /*return*/];
-                }
-                return [2 /*return*/];
             });
         });
     };
-    MonitorConsumer.prototype.visitConsume = function (params) {
-        this.frequencyBreaker.count();
-        window.WTjson = window.WTjson || {};
-        for (var key in params) {
-            window.WTjson[key] = params[key];
-        }
-        window._tag.ready(function () {
-            window._tag.init();
-        });
-    };
-    MonitorConsumer.prototype.clickConsume = function (params) {
-        this.frequencyBreaker.count();
-        window._tag.trackEvent(params.otitle, params.olabel, params.opts);
-    };
+    __decorate([
+        beforeConsume,
+        afterConsume
+    ], MonitorConsumer.prototype, "consume", null);
     return MonitorConsumer;
 }());
 
@@ -777,7 +882,6 @@ var MonitorProvider = /** @class */ (function () {
             return __generator(this, function (_e) {
                 switch (_e.label) {
                     case 0:
-                        console.log("MonitorProvider::track " + this.handler, params, limits);
                         emitObj = {};
                         this.eternals.forEach(function (value, key) { return __awaiter(_this, void 0, void 0, function () {
                             var _a, _b;
@@ -813,11 +917,15 @@ var MonitorProvider = /** @class */ (function () {
                     case 4:
                         if (this.store)
                             this.store.store(this.handler, emitObj);
-                        return [2 /*return*/];
+                        return [2 /*return*/, this];
                 }
             });
         });
     };
+    __decorate([
+        beforeTrack,
+        afterTrack
+    ], MonitorProvider.prototype, "track", null);
     return MonitorProvider;
 }());
 
@@ -825,7 +933,7 @@ var AbstractHook = /** @class */ (function () {
     function AbstractHook(center, handler, api) {
         this.center = center;
         this.provider = this.center.register(new MonitorProvider(handler));
-        this.consumer = this.center.subscribe(new MonitorConsumer(handler, api));
+        this.consumer = this.center.subscribe(new MonitorConsumer(handler, api, 5));
         this.consumer.start();
     }
     AbstractHook.getInstance = function (center, api, other) {
@@ -914,6 +1022,8 @@ var GlobalErrorHook = /** @class */ (function (_super) {
         return _super.call(this, center, "windowError", api) || this;
     }
     GlobalErrorHook.prototype.listener = function (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
         if (evt.target instanceof HTMLElement &&
             ["img", "script", "link"].includes(evt.target.tagName.toLocaleLowerCase())) {
             this.provider.track({
@@ -993,12 +1103,14 @@ var UncaughtHook = /** @class */ (function (_super) {
     function UncaughtHook(center, api) {
         return _super.call(this, center, "windowUncaught", api) || this;
     }
-    UncaughtHook.prototype.listener = function (ev) {
+    UncaughtHook.prototype.listener = function (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
         this.provider.track({
             level: ACTION_LEVEL.ERROR,
             action: "\u5168\u5C40\u672A\u6355\u83B7\u5F02\u5E38",
             actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,
-            jsErrorStack: ev.reason
+            jsErrorStack: evt.reason
         });
     };
     UncaughtHook.prototype.watch = function () {

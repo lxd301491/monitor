@@ -1,5 +1,6 @@
 import { VariableExp } from "./VariableExp";
 import { StoreArea } from "./storeArea";
+import { beforeTrack, afterTrack } from "./decorators/lifeCycle";
 
 const limits: any = {
   userId: 20,
@@ -60,8 +61,9 @@ export class MonitorProvider {
     this.limits = limits;
   }
 
+  @beforeTrack
+  @afterTrack
   async track(params: any, limits: any = {}) {
-    console.log(`MonitorProvider::track ${this.handler}`, params, limits);
     let emitObj: any = {};
     this.eternals.forEach(async (value, key) => {
       emitObj[key] = await value.toString();
@@ -73,5 +75,6 @@ export class MonitorProvider {
       ).toString();
     }
     if (this.store) this.store.store(this.handler, emitObj);
+    return this;
   }
 }

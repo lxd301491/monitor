@@ -10,7 +10,7 @@ export abstract class AbstractHook {
   protected constructor(center: MonitorCenter, handler: string, api: string) {
     this.center = center;
     this.provider = this.center.register(new MonitorProvider(handler));
-    this.consumer = this.center.subscribe(new MonitorConsumer(handler, api));
+    this.consumer = this.center.subscribe(new MonitorConsumer(handler, api, 5));
     this.consumer.start();
   }
 

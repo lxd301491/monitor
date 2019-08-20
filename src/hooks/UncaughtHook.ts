@@ -7,12 +7,14 @@ export class UncaughtHook extends AbstractHook {
     super(center, "windowUncaught", api);
   }
   
-  private listener(ev: PromiseRejectionEvent) {
+  private listener(evt: PromiseRejectionEvent) {
+    evt.preventDefault();
+    evt.stopPropagation();
     this.provider.track({
       level: ACTION_LEVEL.ERROR,
       action: `全局未捕获异常`,
       actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,
-      jsErrorStack: ev.reason
+      jsErrorStack: evt.reason
     });
   }
 

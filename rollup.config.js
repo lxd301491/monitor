@@ -1,3 +1,4 @@
+const commonjs = require('rollup-plugin-commonjs');
 const nodeResolve = require("rollup-plugin-node-resolve");
 const typescript = require("rollup-plugin-typescript2");
 // const babel = require('rollup-plugin-babel');
@@ -7,8 +8,13 @@ const rollup = require("rollup");
 const inputOptions = {
   input: "types/index.d.ts",
   plugins: [
+    commonjs({
+      include: 'node_modules/**',
+    }),
     typescript({
-      tsconfig: "tsconfig.json"
+      tsconfig: "./tsconfig.json",
+      clean: true,
+      rollupCommonJSResolveHack: true
     }),
     nodeResolve()
     // babel({

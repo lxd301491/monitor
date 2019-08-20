@@ -15,13 +15,16 @@ export class StoreArea {
   private storage: Map<string, Array<any>> = new Map();
   private demandList: Array<string> = [];
 
-  constructor(appName: string, maxSize?: number, maxWidth?: number, localization?: Storage) {
+  constructor(appName: string) {
     this.appName = appName;
+  }
+
+  initlize(maxSize?: number, maxWidth?: number, localization?: Storage) {
     if (maxSize) this.maxSize = maxSize;
     if (maxWidth) this.maxWidth = maxWidth;
     if (localization) {
-      this.localization = localization;
-      this.storage = new Map(JSON.parse(this.localization.getItem(appName) || ''));
+      this.localization  = localization;
+      this.storage = new Map(JSON.parse(this.localization.getItem(this.appName) || '[]'));
     }
   }
 
@@ -38,18 +41,36 @@ export class StoreArea {
     }
   }
 
-  demand(storeName: string): any {
-    if (this.storage.has(storeName) && this.width < this.maxWidth) {
+  demandable(storeName: string, bundleSize: number): boolean {
+    if (this.storage.has(storeName) && this.width < this.maxWidth ) {
       let arrStore: Array<any> | undefined = this.storage.get(storeName);
-      if (arrStore && arrStore.length > 0) {
-        this.width++;
-        let point = arrStore.shift();
-        this.demandList.push(point.demandId);
-        if (this.localization) {
-          this.localization.setItem(`${this.appName}`, JSON.stringify([...this.storage]));
-        }
-        return point;
+      if (arrStore) {
+        return  arrStore.length >= bundleSize;
       }
+    }
+    return false;
+  }
+
+  demand(storeName: string, bundleSize?: number): any {
+    bundleSize = bundleSize || 1;
+    if (!this.demandable(storeName, bundleSize)) return null;
+    let arrStore: Array<any> | undefined = this.storage.get(storeName);
+    if (arrStore) {
+      this.width++;
+      let points: any[] = [];
+      while(bundleSize > 0) {
+        points.push(arrStore.shift());
+        bundleSize--;
+      }
+      let demandId = `${storeName}_${Math.random().toString(32).substring(2)}${new Date().getTime()}`;
+      this.demandList.push(demandId);
+      if (this.localization) {
+        this.localization.setItem(`${this.appName}`, JSON.stringify([...this.storage]));
+      }
+      return {
+        demandId: demandId,
+        points: points
+      };
     }
     return null;
   }
@@ -68,7 +89,6 @@ export class StoreArea {
     }
     let arrStore: Array<any> | undefined = this.storage.get(storeName);
     if (arrStore) {
-      point.demandId = `${storeName}_${Math.random().toString(32).substring(2)}${new Date().getTime()}`;
       arrStore.push(point);
       if (this.localization) {
         this.localization.setItem(`${this.appName}`, JSON.stringify([...this.storage]));
