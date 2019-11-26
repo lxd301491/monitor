@@ -3,14 +3,14 @@ import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorCenter } from "../MonitorCenter";
 
 export class UncaughtHook extends AbstractHook {
-  protected constructor(center: MonitorCenter, api: string) {
-    super(center, "windowUncaught", api);
+  protected constructor(center: MonitorCenter) {
+    super(center, "windowUncaught");
   }
   
   private listener(evt: PromiseRejectionEvent) {
     evt.preventDefault();
     evt.stopPropagation();
-    this.provider.track({
+    this.center.getProvider().track({
       level: ACTION_LEVEL.ERROR,
       action: `全局未捕获异常`,
       actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,

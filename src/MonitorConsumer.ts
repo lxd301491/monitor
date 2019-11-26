@@ -1,9 +1,10 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
 import { EMIT_TYPE } from "./configs/globalEnum";
-import { StoreArea } from "./storeArea";
-import * as _ from "lodash";
-import { beforeConsume, afterConsume } from "./decorators/lifeCycle";
-// const pako = require("pako");
+import { Store } from "./Store";
+import { before, after } from "./decorators/LifeCycle";
+import axios from 'axios';
+import { AxiosInstance} from 'axios';
+import pako from 'pako';
 
 declare global {
   interface Window {
@@ -13,9 +14,7 @@ declare global {
 }
 
 export class MonitorConsumer {
-  private handler: string;
-  private store?: StoreArea;
-  private emitFunc?: Function;
+  private store: Store;
   private api: string;
   private frequencyBreaker: CircuitBreaker = new CircuitBreaker(
     "60/60",
@@ -27,96 +26,83 @@ export class MonitorConsumer {
     5 * 60,
     "0/60"
   );
-  private emitType: EMIT_TYPE = EMIT_TYPE.IMAGE;
+  private emitType: EMIT_TYPE;
   private timer?: number;
-  private bundleSize?: number;
+  private fetch: AxiosInstance; 
 
-  constructor(handler: string, api: string, bunderSize?: number, emitType?: EMIT_TYPE) {
-    this.handler = handler;
+  constructor(api: string, store: Store, emitType: EMIT_TYPE = EMIT_TYPE.IMAGE, fetch: AxiosInstance = axios) {
+    if (emitType === EMIT_TYPE.XHR && !XMLHttpRequest) {
+      throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
+    }
+    if (emitType === EMIT_TYPE.FETCH && !fetch) {
+      throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
+    }
     this.api = api;
-    this.bundleSize = bunderSize;
-    if (emitType) this.emitType = emitType;
+    this.store = store;
+    this.emitType = emitType;
+    this.fetch = fetch;
   }
 
-  mountStore(store: StoreArea) {
+  mountStore(store: Store) {
     this.store = store;
   }
 
-  injectCoustumEmit(func: Function) {
-    this.emitFunc = func;
+  setFrequencyBreaker(frequencyBreaker: CircuitBreaker) {
+    this.frequencyBreaker = frequencyBreaker;
   }
 
-  setBreaker(frequencyBreaker?: CircuitBreaker, abnormalBreaker?: CircuitBreaker) {
-    if (frequencyBreaker) this.frequencyBreaker = frequencyBreaker;
-    if (abnormalBreaker) this.abnormalBreaker = abnormalBreaker;
+  setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
+    this.abnormalBreaker = abnormalBreaker;
   }
 
-  start() {
-    if (!this.timer) {
-      this.timer = window.setInterval(() => {
-        if (this.store) {
-          let params = this.store.demand(this.handler, this.bundleSize);
-          if (params) {
-            this.consume(params);
-          }
-        }
-      }, 20);
+  start(period: number = 15000, storeParams?: { size?: number, zip?: boolean }) {
+    if (this.timer) {
+      return;
     }
+    this.timer = window.setInterval(async () => {
+      let data = await this.store.shiftMore(storeParams && storeParams.size);
+      if (data) {
+        this.consume(data, storeParams && storeParams.zip);
+      }
+    }, period);
   }
 
-  pause() {
+  stop() {
     clearInterval(this.timer);
     this.timer = undefined;
   }
 
-  @beforeConsume
-  @afterConsume
-  private async consume(params: any): Promise<any> {
-    // console.log(_.VERSION);
-    // params.points = pako.gzip(JSON.stringify(params.points) , {to: "string"});
-    let resp;
+  @before
+  @after
+  private async consume(data: string, zip: boolean = false): Promise<any> {
+    if (zip) {
+      console.log(`data length before gzip ${data.length}`);
+      data = encodeURIComponent(data);
+      data = pako.gzip(data, {to: "string"});
+      console.log(`data length after gzip ${data.length}`);
+    }
+    this.frequencyBreaker.count();
     try {
       switch (this.emitType) {
         case EMIT_TYPE.IMAGE: {
-          resp = await this.imageConsume(params.points);
+          await this.imageConsume(data);
           break;
         }
         case EMIT_TYPE.XHR: {
-          resp = await this.xhrConsume(params.points);
+          await this.xhrConsume(data);
           break;
         }
         case EMIT_TYPE.FETCH: {
-          resp = await this.fetchConsume(params.points);
+          await this.fetchConsume(data);
           break;
         }
-        case EMIT_TYPE.CUSTOM: {
-          if (this.emitFunc) {
-            resp = await this.emitFunc(params.points);
-            break;
-          }
-        }
-        default:
-          resp = await this.imageConsume(params.points);
       }
     } catch (err) {
       this.abnormalBreaker.count();
-      resp = err;
-    } finally {
-      if (this.store) this.store.remand(params.demandId);
-      return resp;
     }
   }
 
-  private obj2Search(params: any): string {
-    let result: string = "";
-    for (let key in params) {
-      result += key + "=" + encodeURIComponent(params[key]) + "&";
-    }
-    result = result.substring(0, result.length - 1);
-    return result;
-  }
-
-  private async imageConsume(params: any) {
+  private async imageConsume(data: string) {
     this.frequencyBreaker.count();
     let img = new Image();
     return await new Promise((resolve, reject) => {
@@ -130,58 +116,40 @@ export class MonitorConsumer {
       img.onabort = (resp) => {
         reject(resp);
       };
-      img.src = this.api + "?" + this.obj2Search(params);
+      img.src = this.api + "?data=" + data;
     })
   }
 
-  private async xhrConsume(params: any) {
-    if (XMLHttpRequest) {
-      this.frequencyBreaker.count();
-      let xhr: XMLHttpRequest = new XMLHttpRequest();
-      xhr.open("POST", this.api, true);
-      xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-      return await new Promise((resolve, reject) => {
-        xhr.onload = (resp) => {
-          resolve(resp);
-        };
-        xhr.onabort = (resp) => {
-          resolve(resp);
-        };
-        xhr.onerror = (err) => {
-          reject(err);
-        };
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState !== 4 || xhr.status !== 200) {
-            reject(xhr.readyState);
-          }
-        };
-        xhr.send(this.obj2Search(params));
-      });
-    } else {
-      return "XMLHttpRequest is not available";
-    }
+  private async xhrConsume(data: string) {
+    let xhr: XMLHttpRequest = new XMLHttpRequest();
+    xhr.open("POST", this.api, true);
+    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    return await new Promise((resolve, reject) => {
+      xhr.onload = (resp) => {
+        resolve(resp);
+      };
+      xhr.onabort = (resp) => {
+        resolve(resp);
+      };
+      xhr.onerror = (err) => {
+        reject(err);
+      };
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4 || xhr.status !== 200) {
+          reject(xhr.readyState);
+        }
+      };
+      xhr.send(JSON.stringify({
+        data: data
+      }));
+    });
   }
 
-  private async fetchConsume(params: any) {
-    if (fetch) {
-      this.frequencyBreaker.count();
-      return await fetch(this.api, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: params,
-        mode: "cors",
-        cache: "no-cache"
-      })
-        .catch((err) => {
-          throw err;
-        })
-        .finally(() => {
-          return;
-        });
-    } else {
-      return "fetch is not available";
-    }
+  private async fetchConsume(data: string) {
+    this.fetch.post(this.api, {
+      data: {
+        data: data
+      }
+    })
   }
 }

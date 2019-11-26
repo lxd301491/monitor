@@ -3,8 +3,8 @@ import { MonitorCenter } from "../MonitorCenter";
 import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
 
 export class GlobalErrorHook extends AbstractHook {
-  protected constructor(center: MonitorCenter, api: string) {
-    super(center, "windowError", api);
+  constructor(center: MonitorCenter) {
+    super(center, "windowError");
   }
 
   private listener (evt: ErrorEvent) {
@@ -16,7 +16,7 @@ export class GlobalErrorHook extends AbstractHook {
         evt.target.tagName.toLocaleLowerCase()
       )
     ) {
-      this.provider.track({
+      this.center.getProvider().track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `资源加载异常 ${evt.target.getAttribute("src")}`,
         actionGroup: ACTION_GROUP.GLOBAL_ERROR
@@ -42,7 +42,7 @@ export class GlobalErrorHook extends AbstractHook {
         }
         stack = ext.join(",");
       }
-      this.provider.track({
+      this.center.getProvider().track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `js全局异常`,
         actionGroup: ACTION_GROUP.GLOBAL_ERROR,

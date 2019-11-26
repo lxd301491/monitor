@@ -1,10 +1,8 @@
 export class VariableExp {
   obj: any;
-  limit: number;
 
-  constructor(obj: any, limit: number = 0) {
+  constructor(obj: any) {
     this.obj = obj;
-    this.limit = limit;
   }
 
   async toObj() {
@@ -12,11 +10,9 @@ export class VariableExp {
     return target;
   }
 
-  async toString() {
+  async toString(limit?: number) {
     let target = await VariableExp.toStringStatic(this.obj);
-    if (typeof this.limit === "number" && this.limit > 0) {
-      target = target.slice(0, this.limit);
-    }
+    target = limit ? target.slice(0, limit) : target;
     return target;
   }
 

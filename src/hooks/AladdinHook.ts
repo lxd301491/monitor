@@ -6,8 +6,8 @@ export class AladdinHook extends AbstractHook {
   private timers: any[] = [];
   private aladdin: any;
 
-  protected constructor(center: MonitorCenter, api: string, aladdin: any) {
-    super(center, "alddinAbnormal", api);
+  constructor(center: MonitorCenter, aladdin: any) {
+    super(center, "alddinAbnormal");
     this.aladdin = aladdin;
   }
 
@@ -23,7 +23,7 @@ export class AladdinHook extends AbstractHook {
         args: args,
         timestamp: new Date().getTime(),
         handler: setTimeout(() => {
-          this.provider.track({
+          this.center.getProvider().track({
             actionLevel: ACTION_LEVEL.CARSH,
             action: `${args[0].url} 20000+`,
             actionGroup: ACTION_GROUP.TIMEOUT
@@ -42,7 +42,7 @@ export class AladdinHook extends AbstractHook {
     clearTimeout(timer.handler);
     let duration: number = new Date().getTime() - timer.timestamp;
     if (duration > 5000) {
-      this.provider.track({
+      this.center.getProvider().track({
         actionLevel: ACTION_LEVEL.WARNING,
         action: `${timer.args[0].url} ${duration}`,
         actionGroup: ACTION_GROUP.PERFORMANCE

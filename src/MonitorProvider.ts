@@ -1,8 +1,9 @@
 import { VariableExp } from "./VariableExp";
-import { StoreArea } from "./storeArea";
-import { beforeTrack, afterTrack } from "./decorators/lifeCycle";
+import { Store } from "./Store";
+import { before, after } from "./decorators/LifeCycle";
+import _ from "lodash";
 
-const limits: any = {
+const limits: {[key: string]: number} = {
   userId: 20,
   roleId: 20,
   roleArr: 400,
@@ -39,42 +40,46 @@ export class MonitorProvider {
    * 静态数据，添加后每个生成的埋点都会携带，除非主动发生改变
    */
   private eternals: Map<string, VariableExp> = new Map<string, VariableExp>();
-  private handler: string = "";
-  private store: StoreArea | undefined;
+  private store: Store;
   private limits: any = limits;
 
-  constructor(handler: string) {  
-    this.handler = handler;
+  constructor(store: Store) {  
+    this.store = store;
   }
 
-  mountStore(store: StoreArea) {
+  mountStore(store: Store) {
     this.store = store;
   } 
 
-  mergeEternals(params: any, limits: any): void {
+  mergeEternal(params: {[key: string]: any}) {
     for (const key in params) {
-      this.eternals.set(key, new VariableExp(params[key], limits[key] || 0));
+      this.eternals.set(key, new VariableExp(params[key]));
     }
+    return this;
+  }
+
+  mergeLimit (limits: {[key: string]: number}) {
+    _.extend(this.limits, limits);
+    return this;
   }
 
   setCommonLimits(limits: any) {
     this.limits = limits;
   }
 
-  @beforeTrack
-  @afterTrack
-  async track(params: any, limits: any = {}) {
+  @before
+  @after
+  async track(params: any, limits?: {[key: string]: number}) {
     let emitObj: any = {};
     this.eternals.forEach(async (value, key) => {
-      emitObj[key] = await value.toString();
+      emitObj[key] = await value.toString((limits && limits[key]) || this.limits[key]);
     });
     for (const key in params) {
       emitObj[key] = await new VariableExp(
-        params[key],
-        limits[key] || this.limits[key] || 0
-      ).toString();
+        params[key]
+      ).toString((limits && limits[key]) || this.limits[key]);
     }
-    if (this.store) this.store.store(this.handler, emitObj);
+    if (this.store) this.store.push(emitObj);
     return this;
   }
 }

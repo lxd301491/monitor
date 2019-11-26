@@ -5,8 +5,8 @@ import { MonitorCenter } from "../MonitorCenter";
 export class VueHook extends AbstractHook {
   private _vue: any;
 
-  protected constructor(center: MonitorCenter, api: string, Vue: any) {
-    super(center, "vueError", api);
+  protected constructor(center: MonitorCenter, Vue: any) {
+    super(center, "vueError");
     this._vue = Vue.config;
   }
 
@@ -20,7 +20,7 @@ export class VueHook extends AbstractHook {
           comFloor = vm.$options.name + "=>" + comFloor;
         }
       }
-      this.provider.track({
+      this.center.getProvider().track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `${comFloor} ${info}`,
         actionGroup: ACTION_GROUP.TIMEOUT,
