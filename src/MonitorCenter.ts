@@ -3,15 +3,18 @@ import { MonitorConsumer } from "./MonitorConsumer";
 import { Store } from "./Store";
 import { EMIT_TYPE } from "./configs/globalEnum";
 import { AxiosInstance } from "axios";
+import { HooksStore } from "./hooks";
 
 export class MonitorCenter {
-  private provider: MonitorProvider;
-  private consumer?: MonitorConsumer;
   private store: Store;
-
+  private provider: MonitorProvider;
+  private hooks: HooksStore;
+  private consumer?: MonitorConsumer;
+  
   constructor (appName: string) {
     this.store = new Store(appName);
     this.provider = new MonitorProvider(this.store);
+    this.hooks = new HooksStore(this.provider);
   }
 
   /**
@@ -36,5 +39,9 @@ export class MonitorCenter {
 
   getConsumer() {
     return this.consumer;
+  }
+
+  getHooks() {
+    return this.hooks;
   }
 }

@@ -3,9 +3,9 @@
   "version": "1.0.7",
   "description": "```\r npm install pa-monitor --save-dev",
   "scripts": {
-    "build": "node rollup.config.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "tslint \"src/**/*.ts\" "
+    "dev": "rollup -c -w",
+    "build-rollup": "rollup -c --environment INCLUDE_DEPS,BUILD:production",
+    "build": "node rollup.config.js"
   },
   "author": "lxd",
   "license": "ISC",
@@ -22,6 +22,8 @@
     "rollup-plugin-node-builtins": "^2.1.2",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-typescript2": "^0.21.2",
+    "rollup-plugin-uglify": "^6.0.3",
+    "rollup-plugin-uglify-es": "0.0.1",
     "ts-lint": "^4.5.1",
     "tslint": "^5.18.0",
     "typescript": "^3.5.3"

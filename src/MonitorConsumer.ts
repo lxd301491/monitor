@@ -103,7 +103,6 @@ export class MonitorConsumer {
   }
 
   private async imageConsume(data: string) {
-    this.frequencyBreaker.count();
     let img = new Image();
     return await new Promise((resolve, reject) => {
       img.onerror = (err) => {
@@ -146,10 +145,20 @@ export class MonitorConsumer {
   }
 
   private async fetchConsume(data: string) {
+    if (!this.fetch) {
+      return false;
+    }
     this.fetch.post(this.api, {
-      data: {
-        data: data
-      }
+      data: data
     })
+  }
+
+  private async beaconConsume(data: string) {
+    if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
+      return false;
+    }
+    window.navigator.sendBeacon(this.api, JSON.stringify({
+      data: data
+    }));
   }
 }

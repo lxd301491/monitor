@@ -22,9 +22,9 @@
       size: 30,
       zip: true
     });
-    new PAMonitor.GlobalHooks.UncaughtHook(center).watch();
-    new PAMonitor.GlobalHooks.GlobalErrorHook(center).watch();
-    new PAMonitor.GlobalHooks.UIEventHook(center).watch();
+    center.getHooks().watch("globalError");
+    center.getHooks().watch("uncaught");
+    center.getHooks().watch("123123222");
     Promise.reject("123");
     console.log(a.b);
   </script>

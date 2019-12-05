@@ -1,11 +1,9 @@
-import { MonitorCenter } from "../MonitorCenter";
+import { MonitorProvider } from "../MonitorProvider";
 
 export abstract class AbstractHook {
-  protected center: MonitorCenter;
+  protected private?: MonitorProvider;
 
-  constructor(center: MonitorCenter, handler: string) {
-    this.center = center;
-  }
+  abstract initlize (options: any): AbstractHook; 
 
   abstract watch(): void;
 

@@ -1,10 +1,13 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorCenter } from "../MonitorCenter";
 import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
+import { MonitorProvider } from "../MonitorProvider";
 
 export class GlobalErrorHook extends AbstractHook {
-  constructor(center: MonitorCenter) {
-    super(center, "windowError");
+  initlize (options: {
+    private?: MonitorProvider
+  }) {
+    this.private = options.private || this.private;
+    return this;
   }
 
   private listener (evt: ErrorEvent) {
@@ -16,7 +19,7 @@ export class GlobalErrorHook extends AbstractHook {
         evt.target.tagName.toLocaleLowerCase()
       )
     ) {
-      this.center.getProvider().track({
+      this.private && this.private.track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `资源加载异常 ${evt.target.getAttribute("src")}`,
         actionGroup: ACTION_GROUP.GLOBAL_ERROR
@@ -42,7 +45,7 @@ export class GlobalErrorHook extends AbstractHook {
         }
         stack = ext.join(",");
       }
-      this.center.getProvider().track({
+      this.private && this.private.track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `js全局异常`,
         actionGroup: ACTION_GROUP.GLOBAL_ERROR,
@@ -53,9 +56,13 @@ export class GlobalErrorHook extends AbstractHook {
         jsErrorStack: stack
       });
     }
+    return true;
   }
 
   watch(): void {
+    if (!this.private) {
+      throw Error("GlobalErrorHook can not start watch, has not initlized");
+    }
     window.addEventListener("error", this.listener.bind(this));
   }
   unwatch(): void {

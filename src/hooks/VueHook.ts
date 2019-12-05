@@ -1,17 +1,25 @@
 import { AbstractHook } from "./AbstractHook";
 import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
-import { MonitorCenter } from "../MonitorCenter";
+import { MonitorProvider } from "../MonitorProvider";
+import { throws } from "assert";
 
 export class VueHook extends AbstractHook {
-  private _vue: any;
+  private vueConfig: any;
 
-  protected constructor(center: MonitorCenter, Vue: any) {
-    super(center, "vueError");
-    this._vue = Vue.config;
+  initlize (options: {
+    private?: MonitorProvider,
+    vue?: {config: any}
+  }) {
+    this.private = options.private || this.private;
+    this.vueConfig = options.vue ? options.vue.config : this.vueConfig;
+    return this;
   }
 
   watch(): void {
-    this._vue.errorHandler = (err: any, vm: any, info: string) => {
+    if (!this.private || !this.vueConfig) {
+      throw Error("VueHook can not start watch, has not initlized");
+    }
+    this.vueConfig.errorHandler = (err: any, vm: any, info: string) => {
       let comFloor: string = "";
       if (vm) {
         let cur = vm;
@@ -20,7 +28,7 @@ export class VueHook extends AbstractHook {
           comFloor = vm.$options.name + "=>" + comFloor;
         }
       }
-      this.center.getProvider().track({
+      this.private && this.private.track({
         actionLevel: ACTION_LEVEL.ERROR,
         action: `${comFloor} ${info}`,
         actionGroup: ACTION_GROUP.TIMEOUT,
@@ -33,6 +41,6 @@ export class VueHook extends AbstractHook {
   }
   
   unwatch(): void {
-    this._vue.errorHandler = undefined;
+    this.vueConfig.errorHandler = undefined;
   }
 }

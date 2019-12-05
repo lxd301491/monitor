@@ -1,13 +1,16 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorCenter } from "../MonitorCenter";
+import { MonitorProvider } from "../MonitorProvider";
 
 export class UIEventHook extends AbstractHook {
-  protected constructor(center: MonitorCenter) {
-    super(center, "uiEvent");
+  initlize (options: {
+    private?: MonitorProvider
+  }) {
+    this.private = options.private || this.private;
+    return this;
   }
-
+  
   private listener(ev: UIEvent) {
-    this.center.getProvider().track({
+    this.private && this.private.track({
       otitle: "123",
       olabel: "12333",
       opts: {
@@ -17,6 +20,9 @@ export class UIEventHook extends AbstractHook {
   }
 
   watch(): void {
+    if (!this.private) {
+      throw Error("UIEventHook can not start watch, has not initlized");
+    }
     document.addEventListener("click", this.listener.bind(this));
   }
 

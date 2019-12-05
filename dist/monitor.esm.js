@@ -25929,7 +25929,6 @@ var MonitorConsumer = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        this.frequencyBreaker.count();
                         img = new Image();
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
                                 img.onerror = function (err) {
@@ -25985,11 +25984,25 @@ var MonitorConsumer = /** @class */ (function () {
     MonitorConsumer.prototype.fetchConsume = function (data) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
+                if (!this.fetch) {
+                    return [2 /*return*/, false];
+                }
                 this.fetch.post(this.api, {
-                    data: {
-                        data: data
-                    }
+                    data: data
                 });
+                return [2 /*return*/];
+            });
+        });
+    };
+    MonitorConsumer.prototype.beaconConsume = function (data) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
+                    return [2 /*return*/, false];
+                }
+                window.navigator.sendBeacon(this.api, JSON.stringify({
+                    data: data
+                }));
                 return [2 /*return*/];
             });
         });
@@ -28928,49 +28941,24 @@ var Store = /** @class */ (function () {
     return Store;
 }());
 
-var MonitorCenter = /** @class */ (function () {
-    function MonitorCenter(appName) {
-        this.store = new Store(appName);
-        this.provider = new MonitorProvider(this.store);
-    }
-    /**
-     * 注册消费者
-     * @param consumer 消费者实例
-     */
-    MonitorCenter.prototype.subscribe = function (api, emitType, fetch) {
-        if (!this.store) {
-            throw new ReferenceError("The init method has not be invoked, please invoke it before this");
-        }
-        this.consumer = new MonitorConsumer(api, this.store, emitType, fetch);
-        return this.consumer;
-    };
-    MonitorCenter.prototype.getStore = function () {
-        return this.store;
-    };
-    MonitorCenter.prototype.getProvider = function () {
-        return this.provider;
-    };
-    MonitorCenter.prototype.getConsumer = function () {
-        return this.consumer;
-    };
-    return MonitorCenter;
-}());
-
 var AbstractHook = /** @class */ (function () {
-    function AbstractHook(center, handler) {
-        this.center = center;
+    function AbstractHook() {
     }
     return AbstractHook;
 }());
 
 var AladdinHook = /** @class */ (function (_super) {
     __extends(AladdinHook, _super);
-    function AladdinHook(center, aladdin) {
-        var _this = _super.call(this, center, "alddinAbnormal") || this;
+    function AladdinHook() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.timers = [];
-        _this.aladdin = aladdin;
         return _this;
     }
+    AladdinHook.prototype.initlize = function (options) {
+        this.private = options.private || this.private;
+        this.aladdin = options.aladdin || this.aladdin;
+        return this;
+    };
     AladdinHook.prototype.callListener = function (params) {
         var _this = this;
         var action = params.action, args = params.args, callId = params.callId;
@@ -28982,7 +28970,7 @@ var AladdinHook = /** @class */ (function (_super) {
                 args: args,
                 timestamp: new Date().getTime(),
                 handler: setTimeout(function () {
-                    _this.center.getProvider().track({
+                    _this.private && _this.private.track({
                         actionLevel: ACTION_LEVEL.CARSH,
                         action: args[0].url + " 20000+",
                         actionGroup: ACTION_GROUP.TIMEOUT
@@ -29001,7 +28989,7 @@ var AladdinHook = /** @class */ (function (_super) {
         clearTimeout(timer.handler);
         var duration = new Date().getTime() - timer.timestamp;
         if (duration > 5000) {
-            this.center.getProvider().track({
+            this.private && this.private.track({
                 actionLevel: ACTION_LEVEL.WARNING,
                 action: timer.args[0].url + " " + duration,
                 actionGroup: ACTION_GROUP.PERFORMANCE
@@ -29009,6 +28997,9 @@ var AladdinHook = /** @class */ (function (_super) {
         }
     };
     AladdinHook.prototype.watch = function () {
+        if (!this.private || !this.aladdin) {
+            throw Error("VueHook can not start watch, has not initlized");
+        }
         this.aladdin.on("call", this.callListener.bind(this));
         this.aladdin.on("callback", this.callbackListener.bind(this));
         if (process.env.NODE_ENV === 'development') {
@@ -29030,15 +29021,19 @@ var AladdinHook = /** @class */ (function (_super) {
 
 var GlobalErrorHook = /** @class */ (function (_super) {
     __extends(GlobalErrorHook, _super);
-    function GlobalErrorHook(center) {
-        return _super.call(this, center, "windowError") || this;
+    function GlobalErrorHook() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
+    GlobalErrorHook.prototype.initlize = function (options) {
+        this.private = options.private || this.private;
+        return this;
+    };
     GlobalErrorHook.prototype.listener = function (evt) {
         evt.preventDefault();
         evt.stopPropagation();
         if (evt.target instanceof HTMLElement &&
             ["img", "script", "link"].includes(evt.target.tagName.toLocaleLowerCase())) {
-            this.center.getProvider().track({
+            this.private && this.private.track({
                 actionLevel: ACTION_LEVEL.ERROR,
                 action: "\u8D44\u6E90\u52A0\u8F7D\u5F02\u5E38 " + evt.target.getAttribute("src"),
                 actionGroup: ACTION_GROUP.GLOBAL_ERROR
@@ -29066,7 +29061,7 @@ var GlobalErrorHook = /** @class */ (function (_super) {
                 }
                 stack = ext.join(",");
             }
-            this.center.getProvider().track({
+            this.private && this.private.track({
                 actionLevel: ACTION_LEVEL.ERROR,
                 action: "js\u5168\u5C40\u5F02\u5E38",
                 actionGroup: ACTION_GROUP.GLOBAL_ERROR,
@@ -29077,8 +29072,12 @@ var GlobalErrorHook = /** @class */ (function (_super) {
                 jsErrorStack: stack
             });
         }
+        return true;
     };
     GlobalErrorHook.prototype.watch = function () {
+        if (!this.private) {
+            throw Error("GlobalErrorHook can not start watch, has not initlized");
+        }
         window.addEventListener("error", this.listener.bind(this));
     };
     GlobalErrorHook.prototype.unwatch = function () {
@@ -29089,11 +29088,15 @@ var GlobalErrorHook = /** @class */ (function (_super) {
 
 var UIEventHook = /** @class */ (function (_super) {
     __extends(UIEventHook, _super);
-    function UIEventHook(center) {
-        return _super.call(this, center, "uiEvent") || this;
+    function UIEventHook() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
+    UIEventHook.prototype.initlize = function (options) {
+        this.private = options.private || this.private;
+        return this;
+    };
     UIEventHook.prototype.listener = function (ev) {
-        this.center.getProvider().track({
+        this.private && this.private.track({
             otitle: "123",
             olabel: "12333",
             opts: {
@@ -29102,6 +29105,9 @@ var UIEventHook = /** @class */ (function (_super) {
         });
     };
     UIEventHook.prototype.watch = function () {
+        if (!this.private) {
+            throw Error("UIEventHook can not start watch, has not initlized");
+        }
         document.addEventListener("click", this.listener.bind(this));
     };
     UIEventHook.prototype.unwatch = function () {
@@ -29112,13 +29118,17 @@ var UIEventHook = /** @class */ (function (_super) {
 
 var UncaughtHook = /** @class */ (function (_super) {
     __extends(UncaughtHook, _super);
-    function UncaughtHook(center) {
-        return _super.call(this, center, "windowUncaught") || this;
+    function UncaughtHook() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
+    UncaughtHook.prototype.initlize = function (options) {
+        this.private = options.private || this.private;
+        return this;
+    };
     UncaughtHook.prototype.listener = function (evt) {
         evt.preventDefault();
         evt.stopPropagation();
-        this.center.getProvider().track({
+        this.private && this.private.track({
             level: ACTION_LEVEL.ERROR,
             action: "\u5168\u5C40\u672A\u6355\u83B7\u5F02\u5E38",
             actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,
@@ -29126,6 +29136,9 @@ var UncaughtHook = /** @class */ (function (_super) {
         });
     };
     UncaughtHook.prototype.watch = function () {
+        if (!this.private) {
+            throw Error("UncaughtHook can not start watch, has not initlized");
+        }
         window.addEventListener("unhandledrejection", this.listener.bind(this));
     };
     UncaughtHook.prototype.unwatch = function () {
@@ -29136,14 +29149,20 @@ var UncaughtHook = /** @class */ (function (_super) {
 
 var VueHook = /** @class */ (function (_super) {
     __extends(VueHook, _super);
-    function VueHook(center, Vue) {
-        var _this = _super.call(this, center, "vueError") || this;
-        _this._vue = Vue.config;
-        return _this;
+    function VueHook() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
+    VueHook.prototype.initlize = function (options) {
+        this.private = options.private || this.private;
+        this.vueConfig = options.vue ? options.vue.config : this.vueConfig;
+        return this;
+    };
     VueHook.prototype.watch = function () {
         var _this = this;
-        this._vue.errorHandler = function (err, vm, info) {
+        if (!this.private || !this.vueConfig) {
+            throw Error("VueHook can not start watch, has not initlized");
+        }
+        this.vueConfig.errorHandler = function (err, vm, info) {
             var comFloor = "";
             if (vm) {
                 var cur = vm;
@@ -29152,7 +29171,7 @@ var VueHook = /** @class */ (function (_super) {
                     comFloor = vm.$options.name + "=>" + comFloor;
                 }
             }
-            _this.center.getProvider().track({
+            _this.private && _this.private.track({
                 actionLevel: ACTION_LEVEL.ERROR,
                 action: comFloor + " " + info,
                 actionGroup: ACTION_GROUP.TIMEOUT,
@@ -29164,17 +29183,68 @@ var VueHook = /** @class */ (function (_super) {
         };
     };
     VueHook.prototype.unwatch = function () {
-        this._vue.errorHandler = undefined;
+        this.vueConfig.errorHandler = undefined;
     };
     return VueHook;
 }(AbstractHook));
 
-var index = {
-    AladdinHook: AladdinHook,
-    GlobalErrorHook: GlobalErrorHook,
-    UIEventHook: UIEventHook,
-    UncaughtHook: UncaughtHook,
-    VueHook: VueHook
-};
+var HooksStore = /** @class */ (function () {
+    function HooksStore(_private) {
+        this.hooks = new Map();
+        this.hooks.set("aladdin", new AladdinHook().initlize({ private: _private }));
+        this.hooks.set("globalError", new GlobalErrorHook().initlize({ private: _private }));
+        this.hooks.set("uiEvent", new UIEventHook().initlize({ private: _private }));
+        this.hooks.set("uncaught", new UncaughtHook().initlize({ private: _private }));
+        this.hooks.set("vue", new VueHook().initlize({ private: _private }));
+    }
+    HooksStore.prototype.watch = function (type, options) {
+        var hook = this.hooks.get(type);
+        if (hook) {
+            if (options) {
+                hook.initlize(options);
+            }
+            hook.watch();
+        }
+    };
+    HooksStore.prototype.unwatch = function (type) {
+        var hook = this.hooks.get(type);
+        if (hook) {
+            hook.unwatch();
+        }
+    };
+    return HooksStore;
+}());
 
-export { CircuitBreaker, globalEnum as GlobalEnum, index as GlobalHooks, MonitorCenter, MonitorConsumer, lifeCycle };
+var MonitorCenter = /** @class */ (function () {
+    function MonitorCenter(appName) {
+        this.store = new Store(appName);
+        this.provider = new MonitorProvider(this.store);
+        this.hooks = new HooksStore(this.provider);
+    }
+    /**
+     * 注册消费者
+     * @param consumer 消费者实例
+     */
+    MonitorCenter.prototype.subscribe = function (api, emitType, fetch) {
+        if (!this.store) {
+            throw new ReferenceError("The init method has not be invoked, please invoke it before this");
+        }
+        this.consumer = new MonitorConsumer(api, this.store, emitType, fetch);
+        return this.consumer;
+    };
+    MonitorCenter.prototype.getStore = function () {
+        return this.store;
+    };
+    MonitorCenter.prototype.getProvider = function () {
+        return this.provider;
+    };
+    MonitorCenter.prototype.getConsumer = function () {
+        return this.consumer;
+    };
+    MonitorCenter.prototype.getHooks = function () {
+        return this.hooks;
+    };
+    return MonitorCenter;
+}());
+
+export { CircuitBreaker, globalEnum as GlobalEnum, MonitorCenter, MonitorConsumer, lifeCycle };
