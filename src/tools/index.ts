@@ -62,10 +62,8 @@ export function getUniqueInfo(): string {
     uni = randomString(10);
     var exdate = new Date();
     exdate.setDate(exdate.getDate() + expiredays);
-    document.
-    cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
+    document.cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
   }
-  console.log(uni);
   return uni;
 }
 

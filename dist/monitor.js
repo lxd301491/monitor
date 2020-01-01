@@ -182,10 +182,8 @@
             uni = randomString(10);
             var exdate = new Date();
             exdate.setDate(exdate.getDate() + expiredays);
-            document.
-                cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
+            document.cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
         }
-        console.log(uni);
         return uni;
     }
     function on(event, listener, remove) {
@@ -11846,15 +11844,19 @@
             this.private = options.private || this.private;
             return this;
         };
+        ActionHook.prototype.getCurrentElement = function (target) {
+            var r = target.outerHTML.match("<.+?>");
+            return r && r[0] || "";
+        };
         ActionHook.prototype.listener = function (evt) {
             if (!this.private)
                 return;
             console.log(evt);
             if (evt instanceof MouseEvent) {
-                this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target instanceof HTMLElement ? evt.target.innerText : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? evt.target.innerText : undefined, x: evt.x, y: evt.y }));
+                this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
             }
             else if (evt instanceof FocusEvent) {
-                this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target instanceof HTMLElement ? evt.target.innerText : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? evt.target.innerText : undefined }));
+                this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
             }
             else if (evt instanceof KeyboardEvent) {
                 this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));

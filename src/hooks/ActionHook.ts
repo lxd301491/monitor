@@ -9,6 +9,11 @@ export class ActionHook extends AbstractHook {
     this.private = options.private || this.private;
     return this;
   }
+
+  private getCurrentElement(target: HTMLElement) {
+    let r = target.outerHTML.match("<.+?>");
+    return r && r[0] || "";
+  }
   
   private listener(evt: UIEvent) {
     if (!this.private) return;
@@ -16,22 +21,22 @@ export class ActionHook extends AbstractHook {
     if (evt instanceof MouseEvent) {
         this.private.track({
           ...this.private.getBasicInfo(),
-          msg: evt.target instanceof HTMLElement ? evt.target.innerText : "",
+          msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
           ms: "action",
           ml: "info",
           at: evt.type,
-          el: evt.target instanceof HTMLElement ? evt.target.innerText : undefined,
+          el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
           x: evt.x,
           y: evt.y
         });
     } else if (evt instanceof FocusEvent) {
       this.private.track({
         ...this.private.getBasicInfo(),
-        msg: evt.target instanceof HTMLElement ? evt.target.innerText : "",
+        msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
         ms: "action",
         ml: "info",
         at: evt.type,
-        el: evt.target instanceof HTMLElement ? evt.target.innerText : undefined,
+        el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
       });
     } else if (evt instanceof KeyboardEvent) {
       this.private.track({
