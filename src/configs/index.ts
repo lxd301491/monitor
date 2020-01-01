@@ -1,0 +1,5 @@
+export const timeout = 20000;
+/**
+ * cookie过期时间
+ */
+export const expiredays = 24 * 60 * 60 * 1000;

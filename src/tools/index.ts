@@ -1,3 +1,4 @@
+import { expiredays } from "../configs";
 
 
 export function getPing(host: string) {
@@ -29,6 +30,43 @@ export function randomString(len: number) {
       pwd = pwd + $chars.charAt(Math.floor(Math.random() * maxPos));
   }
   return `${pwd}_${new Date().getTime()}`;
+}
+
+/**
+ * 获取url中参数
+ */
+export function getQueryString(name: string) {
+    let reg = new RegExp('(^|&)'+ name +'=([^&]*)(&|$)','i');
+    let r = window.location.search.substr(1).match(reg);
+    if (r != null) return decodeURI(r[2]);
+    return null;
+}
+
+/**
+ * 获取cookie
+ */
+export function getCookie(name: string) {
+  let arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
+  if (arr = document.cookie.match(reg))
+    return (arr[2]);
+  else
+    return null;
+}
+
+/**
+ * 获取页面的唯一标识
+ */
+export function getUniqueInfo(): string {
+  let uni = getCookie("uni");
+  if (!uni) {
+    uni = randomString(10);
+    var exdate = new Date();
+    exdate.setDate(exdate.getDate() + expiredays);
+    document.
+    cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
+  }
+  console.log(uni);
+  return uni;
 }
 
 /**
@@ -108,5 +146,29 @@ export function getConnection () {
     reply: `${rtt}ms`,
     // 打开/请求数据保护模式
     save: saveData
+  }
+}
+
+export function on<K extends keyof WindowEventMap>(event: K, listener: (this: Window, ev: WindowEventMap[K]) => any, remove?: boolean) {
+  if (window.addEventListener) {
+    window.addEventListener(event, function eventHandle(ev: WindowEventMap[K]) {
+      remove && window.removeEventListener(event, eventHandle, true);
+      listener.call(this, ev)
+    }, true) 
+  }
+  if (window.attachEvent) {
+    window.attachEvent("on" + event, function eventHandle(this: Window, ev: WindowEventMap[K]) {
+      remove && window.detachEvent("on" + event, eventHandle);
+      listener.call(this, ev);
+    })
+  }
+}
+
+export function off<K extends keyof WindowEventMap>(event: K, listener: (this: Window, ev: WindowEventMap[K]) => any) {
+  if (window.removeEventListener) {
+    window.removeEventListener(event, listener);
+  } 
+  if (window.detachEvent) {
+    window.detachEvent(event, listener);
   }
 }

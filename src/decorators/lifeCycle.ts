@@ -1,15 +1,3 @@
-interface ILiftCycle {
-  [key: string]: any,
-  consume: {
-    before: Function,
-    after: Function,
-  },
-  track: {
-    before: Function,
-    after: Function,
-  }
-}
-
 export const lifeCycle: ILiftCycle = {
   consume: {
     before: () => {},
@@ -38,4 +26,14 @@ export function after(target: Object, methodName: string, descriptor: PropertyDe
       return result;
     }
   }
+}
+
+export function replace(target: any, methodName: string, replacer: Function) {
+  window._replace_center_[methodName] = target[methodName];
+  target[methodName] = replacer;
+}
+
+export function reduction(target: any, methodName: string, replacer: Function) {
+  target[methodName] = window._replace_center_[methodName];
+  window._replace_center_[methodName] = undefined;
 }

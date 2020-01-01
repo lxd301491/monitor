@@ -9,6 +9,9 @@
   </head>
   <body>
     <!-- <img src="http://www.baidu.com/1.gif"> -->
+    <div id="div1">
+      <input id="input1" type="text" />
+    </div>
   </body>
   <script>
     var center = new PAMonitor.MonitorCenter("test");
@@ -22,8 +25,9 @@
       size: 30,
       zip: true
     });
-    center.getHooks().watch("globalError");
+    center.getHooks().watch("error");
     center.getHooks().watch("uncaught");
+    center.getHooks().watch("action");
     center.getHooks().watch("123123222");
     Promise.reject("123");
     console.log(a.b);

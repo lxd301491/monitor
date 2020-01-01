@@ -1,8 +1,8 @@
 import { AbstractHook } from "./AbstractHook";
-import { ACTION_LEVEL, ACTION_GROUP } from "../configs/globalEnum";
 import { MonitorProvider } from "../MonitorProvider";
+import { on, off } from "../tools";
 
-export class GlobalErrorHook extends AbstractHook {
+export class ErrorHook extends AbstractHook {
   initlize (options: {
     private?: MonitorProvider
   }) {
@@ -11,18 +11,25 @@ export class GlobalErrorHook extends AbstractHook {
   }
 
   private listener (evt: ErrorEvent) {
-    evt.preventDefault();
+    if (!this.private) return;
     evt.stopPropagation();
-    if (
-      evt.target instanceof HTMLElement &&
-      ["img", "script", "link"].includes(
-        evt.target.tagName.toLocaleLowerCase()
-      )
+    evt.preventDefault();
+    if (evt.target instanceof HTMLImageElement ||
+        evt.target instanceof HTMLScriptElement ||
+        evt.target instanceof HTMLLinkElement
     ) {
-      this.private && this.private.track({
-        actionLevel: ACTION_LEVEL.ERROR,
-        action: `资源加载异常 ${evt.target.getAttribute("src")}`,
-        actionGroup: ACTION_GROUP.GLOBAL_ERROR
+      let src = evt.target instanceof HTMLImageElement ||
+      evt.target instanceof HTMLScriptElement ? evt.target.src :
+      evt.target instanceof HTMLLinkElement ?  evt.target.href : "";
+      this.private.track({
+        ...this.private.getBasicInfo(),
+        msg: evt.target.outerHTML,
+        file: src,
+        stack: evt.target.localName.toUpperCase(),
+        line: 0,
+        col: 0,
+        ms: "error",
+        ml: "error"
       });
     } else {
       let stack: string = "";
@@ -45,27 +52,26 @@ export class GlobalErrorHook extends AbstractHook {
         }
         stack = ext.join(",");
       }
-      this.private && this.private.track({
-        actionLevel: ACTION_LEVEL.ERROR,
-        action: `js全局异常`,
-        actionGroup: ACTION_GROUP.GLOBAL_ERROR,
-        jsErrorLineNo: evt.lineno,
-        jsErrorColumnNo: evt.colno,
-        jsErrorMessage: evt.message,
-        jsErrorFilename: evt.filename,
-        jsErrorStack: stack
+      this.private.track({
+        ...this.private.getBasicInfo(),
+        file: evt.filename,
+        line: evt.lineno,
+        col: evt.colno,
+        stack: stack,
+        msg: evt.message,
+        ms: "error",
+        ml: "error"
       });
     }
-    return true;
   }
 
   watch(): void {
     if (!this.private) {
       throw Error("GlobalErrorHook can not start watch, has not initlized");
     }
-    window.addEventListener("error", this.listener.bind(this));
+    on("error", this.listener.bind(this));
   }
   unwatch(): void {
-    window.removeEventListener("error", this.listener.bind(this));
+    off("error", this.listener.bind(this));
   }
 }

@@ -1,7 +1,5 @@
 import { AbstractHook } from "./AbstractHook";
-import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorProvider } from "../MonitorProvider";
-import { throws } from "assert";
 
 export class VueHook extends AbstractHook {
   private vueConfig: any;
@@ -29,13 +27,14 @@ export class VueHook extends AbstractHook {
         }
       }
       this.private && this.private.track({
-        actionLevel: ACTION_LEVEL.ERROR,
-        action: `${comFloor} ${info}`,
-        actionGroup: ACTION_GROUP.TIMEOUT,
-        jsErrorMessage: err.message,
-        jsErrorLineNo: err.line,
-        jsErrorColumnNo: err.colum,
-        jsErrorStack: err.stack
+        ...this.private.getBasicInfo(),
+        msg: err.message,
+        file: `${comFloor} ${info}`,
+        stack: err.stack,
+        line: err.line,
+        col: err.colum,
+        ms: "vue",
+        ml: "error"
       });
     };
   }

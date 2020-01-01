@@ -1,24 +1,24 @@
 import { AladdinHook } from "./AladdinHook";
-import { GlobalErrorHook } from "./GlobalErrorHook";
-import { UIEventHook } from "./UIEventHook";
+import { ErrorHook } from "./ErrorHook";
+import { ActionHook } from "./ActionHook";
 import { UncaughtHook } from "./UncaughtHook";
 import { VueHook } from "./VueHook";
 import { AbstractHook } from "./AbstractHook";
 import { MonitorProvider } from "../MonitorProvider";
+import { InfoType } from "../typings";
 
-export type HookType = "aladdin" | "globalError" | "uiEvent" | "uncaught" | "vue";
 export class HooksStore {
-  private hooks: Map<HookType, AbstractHook> = new Map();
+  private hooks: Map<InfoType, AbstractHook> = new Map();
 
   constructor (_private: MonitorProvider) {
-    this.hooks.set("aladdin", new AladdinHook().initlize({private: _private}));
-    this.hooks.set("globalError", new GlobalErrorHook().initlize({private: _private}));
-    this.hooks.set("uiEvent", new UIEventHook().initlize({private: _private}));
+    this.hooks.set("native", new AladdinHook().initlize({private: _private}));
+    this.hooks.set("error", new ErrorHook().initlize({private: _private}));
+    this.hooks.set("action", new ActionHook().initlize({private: _private}));
     this.hooks.set("uncaught", new UncaughtHook().initlize({private: _private}));
     this.hooks.set("vue", new VueHook().initlize({private: _private}));
   }
 
-  public watch(type: HookType, options ?: any) {
+  public watch(type: InfoType, options ?: any) {
     let hook = this.hooks.get(type);
     if (hook) {
       if (options) {
@@ -28,7 +28,7 @@ export class HooksStore {
     } 
   }
 
-  public unwatch(type: HookType) {
+  public unwatch(type: InfoType) {
     let hook = this.hooks.get(type);
     if (hook) {
       hook.unwatch();

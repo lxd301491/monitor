@@ -1,5 +1,4 @@
 import { AbstractHook } from "./AbstractHook";
-import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorProvider } from "../MonitorProvider";
 export class AladdinHook extends AbstractHook {
   private timers: any[] = [];
@@ -26,10 +25,12 @@ export class AladdinHook extends AbstractHook {
         args: args,
         timestamp: new Date().getTime(),
         handler: setTimeout(() => {
-          this.private && this.private.track({
-            actionLevel: ACTION_LEVEL.CARSH,
-            action: `${args[0].url} 20000+`,
-            actionGroup: ACTION_GROUP.TIMEOUT
+          if (!this.private) return;
+          this.private.track({
+            ...this.private.getBasicInfo(),
+            msg: `${args[0].url} timeout 20000+`,
+            ms: "native",
+            ml: "crash"
           });
         }, 20000)
       });
@@ -46,9 +47,10 @@ export class AladdinHook extends AbstractHook {
     let duration: number = new Date().getTime() - timer.timestamp;
     if (duration > 5000) {
       this.private && this.private.track({
-        actionLevel: ACTION_LEVEL.WARNING,
-        action: `${timer.args[0].url} ${duration}`,
-        actionGroup: ACTION_GROUP.PERFORMANCE
+        ...this.private.getBasicInfo(),
+        msg: `${timer.args[0].url} timeout ${duration}`,
+        ms: "native",
+        ml: "warning"
       });
     }
   }

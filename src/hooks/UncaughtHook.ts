@@ -1,6 +1,6 @@
 import { AbstractHook } from "./AbstractHook";
-import { ACTION_GROUP, ACTION_LEVEL } from "../configs/globalEnum";
 import { MonitorProvider } from "../MonitorProvider";
+import { on, off } from "../tools";
 
 export class UncaughtHook extends AbstractHook {
   initlize (options: {
@@ -11,13 +11,14 @@ export class UncaughtHook extends AbstractHook {
   }
   
   private listener(evt: PromiseRejectionEvent) {
-    evt.preventDefault();
+    if (!this.private) return;
     evt.stopPropagation();
-    this.private && this.private.track({
-      level: ACTION_LEVEL.ERROR,
-      action: `全局未捕获异常`,
-      actionGroup: ACTION_GROUP.GLOBAL_UNCAUGHT,
-      jsErrorStack: evt.reason
+    evt.preventDefault();
+    this.private.track({
+      ...this.private.getBasicInfo(),
+      msg: evt.reason,
+      ms: "uncaught",
+      ml: "error"
     });
   }
 
@@ -25,10 +26,10 @@ export class UncaughtHook extends AbstractHook {
     if (!this.private) {
       throw Error("UncaughtHook can not start watch, has not initlized");
     }
-    window.addEventListener("unhandledrejection", this.listener.bind(this));
+    on("unhandledrejection", this.listener.bind(this));
   }
   
   unwatch(): void {
-    window.removeEventListener("unhandledrejection", this.listener.bind(this));
+    off("unhandledrejection", this.listener.bind(this));
   }
 }

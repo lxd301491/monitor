@@ -1,17 +1,10 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
-import { EMIT_TYPE } from "./configs/globalEnum";
+import { emitType } from "./typings";
 import { Store } from "./Store";
 import { before, after } from "./decorators/LifeCycle";
 import axios from 'axios';
 import { AxiosInstance} from 'axios';
 import pako from 'pako';
-
-declare global {
-  interface Window {
-    WTjson: any,
-    _tag: any
-  }
-}
 
 export class MonitorConsumer {
   private store: Store;
@@ -26,15 +19,15 @@ export class MonitorConsumer {
     5 * 60,
     "0/60"
   );
-  private emitType: EMIT_TYPE;
+  private emitType: emitType;
   private timer?: number;
   private fetch: AxiosInstance; 
 
-  constructor(api: string, store: Store, emitType: EMIT_TYPE = EMIT_TYPE.IMAGE, fetch: AxiosInstance = axios) {
-    if (emitType === EMIT_TYPE.XHR && !XMLHttpRequest) {
+  constructor(api: string, store: Store, emitType: emitType = "image", fetch: AxiosInstance = axios) {
+    if (emitType === "xhr" && !XMLHttpRequest) {
       throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
     }
-    if (emitType === EMIT_TYPE.FETCH && !fetch) {
+    if (emitType === "fetch" && !fetch) {
       throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
     }
     this.api = api;
@@ -84,15 +77,15 @@ export class MonitorConsumer {
     this.frequencyBreaker.count();
     try {
       switch (this.emitType) {
-        case EMIT_TYPE.IMAGE: {
+        case "image": {
           await this.imageConsume(data);
           break;
         }
-        case EMIT_TYPE.XHR: {
+        case "xhr": {
           await this.xhrConsume(data);
           break;
         }
-        case EMIT_TYPE.FETCH: {
+        case "fetch": {
           await this.fetchConsume(data);
           break;
         }
