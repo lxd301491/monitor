@@ -29,6 +29,7 @@ export function after(target: Object, methodName: string, descriptor: PropertyDe
 }
 
 export function replace(target: any, methodName: string, replacer: Function) {
+  if (!window._replace_center_) window._replace_center_ = {};
   if (!window._replace_center_[methodName]) {
     window._replace_center_[methodName] = target[methodName];
     target[methodName] = replacer;
@@ -36,6 +37,7 @@ export function replace(target: any, methodName: string, replacer: Function) {
 }
 
 export function reduction(target: any, methodName: string) {
+  if (!window._replace_center_) window._replace_center_ = {};
   if (window._replace_center_[methodName]) {
     target[methodName] = window._replace_center_[methodName];
     window._replace_center_[methodName] = undefined;

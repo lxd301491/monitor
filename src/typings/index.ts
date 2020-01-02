@@ -1,10 +1,10 @@
-export type InfoType = "native" | "error" | "action" | "uncaught" | "spa" | "performance";
+export type InfoType = "native" | "error" | "action" | "uncaught" | "spa" | "performance" | "pv";
 
 export type ActionType = "click" | "input" | "blur";
 
 export const actions : any[] = ["click", "input", "blur"];
 
-export type Infos = basicInfo | performanceInfo | envInfo | errorInfo | actionInfo;
+export type Infos = basicInfo | performanceInfo | envInfo | errorInfo | actionInfo | pvInfo;
 
 export type EmitType = "image" | "fetch" | "xhr" | "custom";
 
@@ -59,6 +59,14 @@ export interface basicInfo extends networkInfo, msgInfo, envInfo {
   uId: string
   // 用户角色
   rId: string
+}
+
+export interface pvInfo extends basicInfo {
+  dot: string // document title
+  dol: string // document location
+  dr: string // 来源
+  dpr: number // dpr
+  de: string // document 编码
 }
 
 export interface performanceInfo extends basicInfo {

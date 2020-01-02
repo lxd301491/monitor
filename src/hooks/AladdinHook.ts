@@ -23,7 +23,7 @@ export class AladdinHook extends AbstractHook {
         args: args,
         timestamp: new Date().getTime(),
         handler: setTimeout(() => {
-          this.private.track({
+          this.provider.track({
             ...getBasicInfo(),
             msg: `${args[0].url} timeout 20000+`,
             ms: "native",
@@ -43,7 +43,7 @@ export class AladdinHook extends AbstractHook {
     clearTimeout(timer.handler);
     let duration: number = new Date().getTime() - timer.timestamp;
     if (duration > 5000) {
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         msg: `${timer.args[0].url} timeout ${duration}`,
         ms: "native",

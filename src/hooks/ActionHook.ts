@@ -9,7 +9,7 @@ export class ActionHook extends AbstractHook {
   
   private listener(evt: UIEvent) {
     if (evt instanceof MouseEvent) {
-        this.private.track({
+        this.provider.track({
           ...getBasicInfo(),
           msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
           ms: "action",
@@ -20,7 +20,7 @@ export class ActionHook extends AbstractHook {
           y: evt.y
         });
     } else if (evt instanceof FocusEvent) {
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
         ms: "action",
@@ -29,7 +29,7 @@ export class ActionHook extends AbstractHook {
         el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
       });
     } else if (evt instanceof KeyboardEvent) {
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         msg: `${evt.type} ${evt.key}`,
         ms: "action",
@@ -38,7 +38,7 @@ export class ActionHook extends AbstractHook {
         key: evt.key
       });
     } else if (evt instanceof InputEvent) {
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         msg: `${evt.inputType} ${evt.data}`,
         ms: "action",

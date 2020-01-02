@@ -12,7 +12,7 @@ export class ErrorHook extends AbstractHook {
       let src = evt.target instanceof HTMLImageElement ||
       evt.target instanceof HTMLScriptElement ? evt.target.src :
       evt.target instanceof HTMLLinkElement ?  evt.target.href : "";
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         msg: evt.target.outerHTML,
         file: src,
@@ -43,7 +43,7 @@ export class ErrorHook extends AbstractHook {
         }
         stack = ext.join(",");
       }
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         file: evt.filename,
         line: evt.lineno,

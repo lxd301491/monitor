@@ -5,7 +5,7 @@ export class UncaughtHook extends AbstractHook {
   private listener(evt: PromiseRejectionEvent) {
     evt.stopPropagation();
     evt.preventDefault();
-    this.private.track({
+    this.provider.track({
       ...getBasicInfo(),
       msg: evt.reason,
       ms: "uncaught",

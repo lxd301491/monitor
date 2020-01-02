@@ -44,3 +44,7 @@ declare var InputEvent: {
   prototype: InputEvent;
   new(type: string, eventInitDict?: InputEventInit): InputEvent;
 };
+
+interface WindowEventMap {
+  "historystatechanged": CustomEvent
+}

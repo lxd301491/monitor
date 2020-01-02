@@ -4,7 +4,7 @@ import { perforPage, on, off, getBasicInfo } from "../tools";
 export class PerformanceHook extends AbstractHook {
   private listener (evt: Event) {
     setTimeout(() => {
-      this.private.track({
+      this.provider.track({
         ...getBasicInfo(),
         ...perforPage()
       });

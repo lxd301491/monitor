@@ -4,6 +4,7 @@ import { Store } from "./Store";
 import { EmitType } from "./typings";
 import { AxiosInstance } from "axios";
 import { HooksStore } from "./hooks";
+import { pv } from "./tools";
 
 export class MonitorCenter {
   private store: Store;
@@ -15,6 +16,7 @@ export class MonitorCenter {
     this.store = new Store(appName);
     this.provider = new MonitorProvider(this.store);
     this.hooks = new HooksStore(this.provider);
+    pv(this.provider);
   }
 
   /**

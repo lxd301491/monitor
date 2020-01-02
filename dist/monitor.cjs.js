@@ -142,8 +142,20 @@ function after(target, methodName, descriptor) {
     };
 }
 function replace(target, methodName, replacer) {
-    window._replace_center_[methodName] = target[methodName];
-    target[methodName] = replacer;
+    if (!window._replace_center_)
+        window._replace_center_ = {};
+    if (!window._replace_center_[methodName]) {
+        window._replace_center_[methodName] = target[methodName];
+        target[methodName] = replacer;
+    }
+}
+function reduction(target, methodName) {
+    if (!window._replace_center_)
+        window._replace_center_ = {};
+    if (window._replace_center_[methodName]) {
+        target[methodName] = window._replace_center_[methodName];
+        window._replace_center_[methodName] = undefined;
+    }
 }
 
 /**
@@ -290,6 +302,26 @@ function off(event, listener) {
     if (window.detachEvent) {
         window.detachEvent(event, listener);
     }
+}
+// 自定义事件，并dispatch
+function dispatchCustomEvent(e, t) {
+    var r;
+    CustomEvent
+        ? r = new CustomEvent(e, {
+            detail: t
+        })
+        : ((r = window.document.createEvent("HTMLEvents")).initEvent(e, !1, !0),
+            r.detail = t);
+    window.dispatchEvent(r);
+}
+function parseHash(e) {
+    return (e ? parseUrl(e.replace(/^#\/?/, "")) : "") || "[index]";
+}
+function parseUrl(e) {
+    return e.replace(/^(https?:)?\/\//, "").replace(/\?.*$/, "");
+}
+function pv(provider, page) {
+    provider.track(__assign({}, getBasicInfo(), { dot: document.title, dol: location.href, dr: document.referrer, dpr: window.devicePixelRatio, de: document.charset, page: page ? page : window.location.href, ms: "pv", ml: "info" }));
 }
 
 var MonitorProvider = /** @class */ (function () {
@@ -11771,8 +11803,8 @@ var Store = /** @class */ (function () {
 }());
 
 var AbstractHook = /** @class */ (function () {
-    function AbstractHook(_private) {
-        this.private = _private;
+    function AbstractHook(provider) {
+        this.provider = provider;
     }
     return AbstractHook;
 }());
@@ -11799,7 +11831,7 @@ var AladdinHook = /** @class */ (function (_super) {
                 args: args,
                 timestamp: new Date().getTime(),
                 handler: setTimeout(function () {
-                    _this.private.track(__assign({}, getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
+                    _this.provider.track(__assign({}, getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
                 }, 20000)
             });
         }
@@ -11814,7 +11846,7 @@ var AladdinHook = /** @class */ (function (_super) {
         clearTimeout(timer.handler);
         var duration = new Date().getTime() - timer.timestamp;
         if (duration > 5000) {
-            this.private.track(__assign({}, getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
+            this.provider.track(__assign({}, getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
         }
     };
     AladdinHook.prototype.watch = function () {
@@ -11854,7 +11886,7 @@ var ErrorHook = /** @class */ (function (_super) {
             var src = evt.target instanceof HTMLImageElement ||
                 evt.target instanceof HTMLScriptElement ? evt.target.src :
                 evt.target instanceof HTMLLinkElement ? evt.target.href : "";
-            this.private.track(__assign({}, getBasicInfo(), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
+            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
         }
         else {
             var stack = "";
@@ -11878,7 +11910,7 @@ var ErrorHook = /** @class */ (function (_super) {
                 }
                 stack = ext.join(",");
             }
-            this.private.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
+            this.provider.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
         }
     };
     ErrorHook.prototype.watch = function () {
@@ -11903,16 +11935,16 @@ var ActionHook = /** @class */ (function (_super) {
     };
     ActionHook.prototype.listener = function (evt) {
         if (evt instanceof MouseEvent) {
-            this.private.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
+            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
         }
         else if (evt instanceof FocusEvent) {
-            this.private.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
+            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
         }
         else if (evt instanceof KeyboardEvent) {
-            this.private.track(__assign({}, getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
+            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
         }
         else if (evt instanceof InputEvent) {
-            this.private.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
+            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
         }
     };
     ActionHook.prototype.watch = function () {
@@ -11958,7 +11990,7 @@ var UncaughtHook = /** @class */ (function (_super) {
     UncaughtHook.prototype.listener = function (evt) {
         evt.stopPropagation();
         evt.preventDefault();
-        this.private.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
+        this.provider.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
     };
     UncaughtHook.prototype.watch = function () {
         on("unhandledrejection", this.listener.bind(this));
@@ -11974,31 +12006,50 @@ var SPARouterHook = /** @class */ (function (_super) {
     function SPARouterHook() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    SPARouterHook.prototype.hackOnpopstate = function () {
-        window['_onpopstate_'] = window.onpopstate;
-        window.onpopstate = function () {
-            for (var r = arguments.length, a = new Array(r), o = 0; o < r; o++)
-                a[o] = arguments[o];
-            if (window._onpopstate_)
-                return window._onpopstate_.apply(this, a);
-        };
-    };
     SPARouterHook.prototype.hackState = function (e) {
-        if (!window['_onpopstate_']) {
+        replace(history, e, function (data, title, url) {
             // 调用pushState或replaceState时hack Onpopstate
             replace(window, "onpopstate", function () {
                 for (var r = arguments.length, a = new Array(r), o = 0; o < r; o++)
                     a[o] = arguments[o];
-                if (window._onpopstate_)
-                    return window._onpopstate_.apply(this, a);
+                return window._replace_center_.onpopstate.apply(this, a);
             });
-        }
+            var f = window._replace_center_[e].apply(history, [data, title, url]);
+            if (!url)
+                return f;
+            try {
+                var l = location.href.split("#"), h = url.split("#"), p = parseUrl(l[0]), d = parseUrl(h[0]), g = l[1] && l[1].replace(/^\/?(.*)/, "$1"), v = h[1] && h[1].replace(/^\/?(.*)/, "$1");
+                p !== d ? dispatchCustomEvent("historystatechanged", d) : g !== v && dispatchCustomEvent("historystatechanged", v);
+            }
+            catch (m) {
+                console.log("[retcode] error in " + e + ": " + m);
+            }
+            return f;
+        });
+    };
+    SPARouterHook.prototype.dehackState = function (e) {
+        reduction(history, e);
+        reduction(window, 'onpopstate');
+    };
+    SPARouterHook.prototype.handleHashchange = function (e) {
+        var page = parseHash(location.hash.toLowerCase());
+        pv(this.provider, page);
+    };
+    SPARouterHook.prototype.handleHistorystatechange = function (e) {
+        var page = parseHash(e.detail.toLowerCase());
+        pv(this.provider, page);
     };
     SPARouterHook.prototype.watch = function () {
-        throw new Error("Method not implemented.");
+        this.hackState('pushState');
+        this.hackState('replaceState');
+        on('hashchange', this.handleHashchange.bind(this));
+        on('historystatechanged', this.handleHistorystatechange.bind(this));
     };
     SPARouterHook.prototype.unwatch = function () {
-        throw new Error("Method not implemented.");
+        this.dehackState('pushState');
+        this.dehackState('replaceState');
+        off('hashchange', this.handleHashchange.bind(this));
+        off('historystatechanged', this.handleHistorystatechange.bind(this));
     };
     return SPARouterHook;
 }(AbstractHook));
@@ -12011,7 +12062,7 @@ var PerformanceHook = /** @class */ (function (_super) {
     PerformanceHook.prototype.listener = function (evt) {
         var _this = this;
         setTimeout(function () {
-            _this.private.track(__assign({}, getBasicInfo(), perforPage()));
+            _this.provider.track(__assign({}, getBasicInfo(), perforPage()));
         }, 20);
     };
     PerformanceHook.prototype.watch = function () {
@@ -12024,14 +12075,14 @@ var PerformanceHook = /** @class */ (function (_super) {
 }(AbstractHook));
 
 var HooksStore = /** @class */ (function () {
-    function HooksStore(_private) {
+    function HooksStore(provider) {
         this.hooks = new Map();
-        this.hooks.set("native", new AladdinHook(_private).initlize({}));
-        this.hooks.set("error", new ErrorHook(_private));
-        this.hooks.set("action", new ActionHook(_private));
-        this.hooks.set("uncaught", new UncaughtHook(_private));
-        this.hooks.set("spa", new SPARouterHook(_private));
-        this.hooks.set("performance", new PerformanceHook(_private));
+        this.hooks.set("native", new AladdinHook(provider).initlize({}));
+        this.hooks.set("error", new ErrorHook(provider));
+        this.hooks.set("action", new ActionHook(provider));
+        this.hooks.set("uncaught", new UncaughtHook(provider));
+        this.hooks.set("spa", new SPARouterHook(provider));
+        this.hooks.set("performance", new PerformanceHook(provider));
     }
     HooksStore.prototype.watch = function (type, options) {
         var hook = this.hooks.get(type);
@@ -12056,6 +12107,7 @@ var MonitorCenter = /** @class */ (function () {
         this.store = new Store(appName);
         this.provider = new MonitorProvider(this.store);
         this.hooks = new HooksStore(this.provider);
+        pv(this.provider);
     }
     /**
      * 注册消费者

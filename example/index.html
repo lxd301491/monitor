@@ -14,13 +14,13 @@
     </div>
   </body>
   <script>
-    var center = new PAMonitor.MonitorCenter("test");
     PAMonitor.lifeCycle.track.before = function(data) {
       console.log("track before", event,data);
     }
     PAMonitor.lifeCycle.consume.before = function(data) {
       console.log("consume before", event,data);
     }
+    var center = new PAMonitor.MonitorCenter("test");
     center.subscribe("https://www.baidu.com").start(10000, {
       size: 30,
       zip: true
@@ -29,8 +29,6 @@
     center.getHooks().watch("uncaught");
     center.getHooks().watch("action");
     center.getHooks().watch("performance");
-    center.getHooks().watch("123123222");
-    Promise.reject("123");
-    console.log(a.b);
+    center.getHooks().watch("spa");
   </script>
 </html>

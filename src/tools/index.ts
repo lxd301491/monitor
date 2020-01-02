@@ -1,5 +1,6 @@
 import { expiredays } from "../configs";
 import { basicInfo } from "../typings";
+import { MonitorProvider } from "../MonitorProvider";
 
 export function getBasicInfo(): basicInfo {
   return {
@@ -26,9 +27,6 @@ export function getBasicInfo(): basicInfo {
     // 当前版本号
     v: '{{VERSION}}'
   }
-}
-
-export function getPing(host: string) {
 }
 
 // 获取浏览器默认语言
@@ -201,4 +199,41 @@ export function off<K extends keyof WindowEventMap>(event: K, listener: (this: W
   if (window.detachEvent) {
     window.detachEvent(event, listener);
   }
+}
+
+// 自定义事件，并dispatch
+export function dispatchCustomEvent (e: string, t:string) {
+  let r: any;
+  CustomEvent 
+    ? r = new CustomEvent(e, {
+        detail: t
+      }) 
+    : (
+      (r = window.document.createEvent("HTMLEvents")).initEvent(e, !1, !0),
+      r.detail = t
+    );
+  window.dispatchEvent(r);
+}
+
+export function parseHash (e:string) {
+  return (e ? parseUrl(e.replace(/^#\/?/, "")) : "") || "[index]";
+}
+
+
+export function parseUrl (e: string) {
+  return e.replace(/^(https?:)?\/\//, "").replace(/\?.*$/, "");
+}
+
+export function pv(provider: MonitorProvider, page?: string) {
+  provider.track({
+    ...getBasicInfo(),
+    dot: document.title,
+    dol: location.href,
+    dr: document.referrer,
+    dpr: window.devicePixelRatio,
+    de: document.charset,
+    page: page ? page : window.location.href,
+    ms: "pv",
+    ml: "info"
+  });
 }

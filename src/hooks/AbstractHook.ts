@@ -1,10 +1,10 @@
 import { MonitorProvider } from "../MonitorProvider";
 
 export abstract class AbstractHook {
-  protected private: MonitorProvider;
+  protected provider: MonitorProvider;
 
-  constructor (_private: MonitorProvider) {
-    this.private = _private;
+  constructor (provider: MonitorProvider) {
+    this.provider = provider;
   }
   
   abstract watch(): void;
