@@ -5,6 +5,7 @@ import { before, after } from "./decorators/LifeCycle";
 import axios from 'axios';
 import { AxiosInstance} from 'axios';
 import pako from 'pako';
+import { infoLenMax } from "./configs";
 
 export class MonitorConsumer {
   private store: Store;
@@ -68,7 +69,7 @@ export class MonitorConsumer {
   @before
   @after
   private async consume(data: string, zip: boolean = false): Promise<any> {
-    if (zip) {
+    if (zip && data.length > infoLenMax) {
       console.log(`data length before gzip ${data.length}`);
       data = encodeURIComponent(data);
       data = pako.gzip(data, {to: "string"});

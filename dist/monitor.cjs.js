@@ -150,6 +150,10 @@ function replace(target, methodName, replacer) {
  * cookie过期时间
  */
 var expiredays = 24 * 60 * 60 * 1000;
+/**
+ * 超长消息压缩阈值
+ */
+var infoLenMax = 1000;
 
 function getBasicInfo() {
     return __assign({}, getUniqueInfo(), getConnection(), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", msg: "", ms: "unkown", ml: "info", 
@@ -8708,7 +8712,7 @@ var MonitorConsumer = /** @class */ (function () {
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        if (zip) {
+                        if (zip && data.length > infoLenMax) {
                             console.log("data length before gzip " + data.length);
                             data = encodeURIComponent(data);
                             data = pako_1.gzip(data, { to: "string" });
