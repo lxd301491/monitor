@@ -1,7 +1,7 @@
 import { MonitorProvider } from "./MonitorProvider";
 import { MonitorConsumer } from "./MonitorConsumer";
 import { Store } from "./Store";
-import { emitType } from "./typings";
+import { EmitType } from "./typings";
 import { AxiosInstance } from "axios";
 import { HooksStore } from "./hooks";
 
@@ -21,7 +21,7 @@ export class MonitorCenter {
    * 注册消费者
    * @param consumer 消费者实例
    */
-  subscribe(api: string, emitType?: emitType, fetch?: AxiosInstance): MonitorConsumer {
+  subscribe(api: string, emitType?: EmitType, fetch?: AxiosInstance): MonitorConsumer {
     if (!this.store) {
       throw new ReferenceError("The init method has not be invoked, please invoke it before this");
     }

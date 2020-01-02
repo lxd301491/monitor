@@ -1,17 +1,11 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorProvider } from "../MonitorProvider";
-import { on, off } from "../tools";
+import { on, off, getBasicInfo } from "../tools";
 
 export class ErrorHook extends AbstractHook {
-  initlize (options: {
-    private?: MonitorProvider
-  }) {
-    this.private = options.private || this.private;
-    return this;
-  }
-
   private listener (evt: ErrorEvent) {
-    if (!this.private) return;
+    if (!this.private) {
+      throw Error("GlobalErrorHook can not start watch, has not initlized");
+    }
     evt.stopPropagation();
     evt.preventDefault();
     if (evt.target instanceof HTMLImageElement ||
@@ -22,7 +16,7 @@ export class ErrorHook extends AbstractHook {
       evt.target instanceof HTMLScriptElement ? evt.target.src :
       evt.target instanceof HTMLLinkElement ?  evt.target.href : "";
       this.private.track({
-        ...this.private.getBasicInfo(),
+        ...getBasicInfo(),
         msg: evt.target.outerHTML,
         file: src,
         stack: evt.target.localName.toUpperCase(),
@@ -53,7 +47,7 @@ export class ErrorHook extends AbstractHook {
         stack = ext.join(",");
       }
       this.private.track({
-        ...this.private.getBasicInfo(),
+        ...getBasicInfo(),
         file: evt.filename,
         line: evt.lineno,
         col: evt.colno,
@@ -66,9 +60,6 @@ export class ErrorHook extends AbstractHook {
   }
 
   watch(): void {
-    if (!this.private) {
-      throw Error("GlobalErrorHook can not start watch, has not initlized");
-    }
     on("error", this.listener.bind(this));
   }
   unwatch(): void {

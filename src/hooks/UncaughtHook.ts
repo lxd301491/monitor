@@ -1,21 +1,13 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorProvider } from "../MonitorProvider";
-import { on, off } from "../tools";
+import { on, off, getBasicInfo } from "../tools";
 
 export class UncaughtHook extends AbstractHook {
-  initlize (options: {
-    private?: MonitorProvider
-  }) {
-    this.private = options.private || this.private;
-    return this;
-  }
-  
   private listener(evt: PromiseRejectionEvent) {
     if (!this.private) return;
     evt.stopPropagation();
     evt.preventDefault();
     this.private.track({
-      ...this.private.getBasicInfo(),
+      ...getBasicInfo(),
       msg: evt.reason,
       ms: "uncaught",
       ml: "error"

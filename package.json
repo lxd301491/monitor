@@ -13,6 +13,7 @@
     "@babel/core": "^7.5.4",
     "@babel/preset-env": "^7.5.4",
     "@babel/preset-typescript": "^7.3.3",
+    "@types/lodash": "^4.14.112",
     "axios": "^0.19.0",
     "localforage": "^1.7.3",
     "pako": "^1.0.10",
@@ -32,9 +33,11 @@
     "example": "example"
   },
   "dependencies": {
-    "@types/lodash": "^4.14.136",
+    "@types/dom-inputevent": "^1.0.5",
     "@types/mz": "0.0.32",
-    "@types/pako": "^1.0.1"
+    "@types/pako": "^1.0.1",
+    "rollup-plugin-replace": "^2.2.0",
+    "vue": "^2.6.11"
   },
   "repository": {
     "type": "git",

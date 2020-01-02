@@ -1,5 +1,5 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
-import { emitType } from "./typings";
+import { EmitType } from "./typings";
 import { Store } from "./Store";
 import { before, after } from "./decorators/LifeCycle";
 import axios from 'axios';
@@ -19,11 +19,11 @@ export class MonitorConsumer {
     5 * 60,
     "0/60"
   );
-  private emitType: emitType;
+  private emitType: EmitType;
   private timer?: number;
   private fetch: AxiosInstance; 
 
-  constructor(api: string, store: Store, emitType: emitType = "image", fetch: AxiosInstance = axios) {
+  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: AxiosInstance = axios) {
     if (emitType === "xhr" && !XMLHttpRequest) {
       throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
     }

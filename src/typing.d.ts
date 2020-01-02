@@ -33,3 +33,14 @@ interface ILiftCycle {
 interface Date {
   toGMTString(): string;
 }
+
+interface InputEvent extends UIEvent {
+  readonly data: string | null;
+  readonly inputType: string;
+  readonly isComposing: boolean;
+}
+
+declare var InputEvent: {
+  prototype: InputEvent;
+  new(type: string, eventInitDict?: InputEventInit): InputEvent;
+};

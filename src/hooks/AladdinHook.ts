@@ -1,14 +1,12 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorProvider } from "../MonitorProvider";
+import { getBasicInfo } from "../tools";
 export class AladdinHook extends AbstractHook {
   private timers: any[] = [];
   private aladdin: any;
 
   initlize (options: {
-    private?: MonitorProvider, 
     aladdin?: {on: Function, off: Function}
   }) {
-    this.private = options.private || this.private;
     this.aladdin = options.aladdin || this.aladdin;
     return this;
   }
@@ -27,7 +25,7 @@ export class AladdinHook extends AbstractHook {
         handler: setTimeout(() => {
           if (!this.private) return;
           this.private.track({
-            ...this.private.getBasicInfo(),
+            ...getBasicInfo(),
             msg: `${args[0].url} timeout 20000+`,
             ms: "native",
             ml: "crash"
@@ -38,6 +36,9 @@ export class AladdinHook extends AbstractHook {
   }
 
   private callbackListener(params: any) {
+    if (!this.private) {
+      throw Error("AladdinHook callbackListener private has not initlized");
+    }
     let callId: string = params.handlerKey.split("_")[0];
     let timer: any = this.timers.filter((item: any) => {
       return item.callId === callId;
@@ -46,8 +47,8 @@ export class AladdinHook extends AbstractHook {
     clearTimeout(timer.handler);
     let duration: number = new Date().getTime() - timer.timestamp;
     if (duration > 5000) {
-      this.private && this.private.track({
-        ...this.private.getBasicInfo(),
+      this.private.track({
+        ...getBasicInfo(),
         msg: `${timer.args[0].url} timeout ${duration}`,
         ms: "native",
         ml: "warning"
@@ -56,8 +57,8 @@ export class AladdinHook extends AbstractHook {
   }
 
   watch(): void {
-    if (!this.private || !this.aladdin) {
-      throw Error("VueHook can not start watch, has not initlized");
+    if (!this.aladdin) {
+      throw Error("AladdinHook can not start watch, has not initlized");
     }
     this.aladdin.on("call", this.callListener.bind(this));
     this.aladdin.on("callback", this.callbackListener.bind(this));

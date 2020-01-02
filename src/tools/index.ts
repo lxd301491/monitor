@@ -1,5 +1,32 @@
 import { expiredays } from "../configs";
+import { basicInfo } from "../typings";
 
+export function getBasicInfo(): basicInfo {
+  return {
+    ...getUniqueInfo(),
+    ...getConnection(),
+    page: window.location.href,
+    uId: getCookie("uId") || "",
+    rId: getCookie("rId") || "",
+    msg: "",
+    ms: "unkown",
+    ml: "info",
+    // 设备号
+    dId: getCookie("deviceId") || "",
+    // 设备类型
+    dt: getCookie("deviceType") || "",
+    // 系统
+    sys: getCookie("sys") || "",
+    //系统版本
+    sv: getCookie("sysVersion") || "",
+    //设备宽度像素
+    sw: getScreen().w,
+    // 设备高度像素
+    sh: getScreen().h,
+    // 当前版本号
+    v: '{{VERSION}}'
+  }
+}
 
 export function getPing(host: string) {
 }
@@ -12,9 +39,10 @@ export function getLang() {
 }
 
 export function getScreen() {
-  let w = document.documentElement.clientWidth || document.body.clientWidth;
-  let h = document.documentElement.clientHeight || document.body.clientHeight;
-  return w + 'x' + h
+  return {
+    w: document.documentElement.clientWidth || document.body.clientWidth,
+    h: document.documentElement.clientHeight || document.body.clientHeight
+  }
 }
 
 /**
@@ -56,7 +84,7 @@ export function getCookie(name: string) {
 /**
  * 获取页面的唯一标识
  */
-export function getUniqueInfo(): string {
+export function getUniqueInfo() {
   let uni = getCookie("uni");
   if (!uni) {
     uni = randomString(10);
@@ -64,14 +92,16 @@ export function getUniqueInfo(): string {
     exdate.setDate(exdate.getDate() + expiredays);
     document.cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
   }
-  return uni;
+  return {
+    uni: uni
+  };
 }
 
 /**
  * 统计页面性能
  */
 export function perforPage() {
-  if (!window.performance) return "浏览器或者webview不支持performance";
+  if (!window.performance) return {};
   let timing = performance.timing
   return {
       // DNS解析时间
@@ -132,18 +162,20 @@ export function perforResource(initiatorType: string) {
 export function getConnection () {
   let connection = (navigator as any).connection;
   if (!connection) {
-    return "浏览器或者webview不支持navigator connection";
+    return {
+      ct: navigator.onLine ? "online" : "offline"
+    };
   }
   const { rtt, downlink, effectiveType, saveData } = connection;
   return {
     // 有效网络连接类型
-    type: effectiveType,
+    ct: effectiveType,
     // 估算的下行速度/带宽
-    download: `${downlink}Mb/s`,
+    cs: `${downlink}Mb/s`,
     // 估算的往返时间
-    reply: `${rtt}ms`,
+    cr: `${rtt}ms`,
     // 打开/请求数据保护模式
-    save: saveData
+    csa: saveData
   }
 }
 

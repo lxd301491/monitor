@@ -1,4 +1,4 @@
-export type InfoType = "native" | "error" | "action" | "uncaught" | "vue" | "spa";
+export type InfoType = "native" | "error" | "action" | "uncaught" | "spa" | "performance";
 
 export type ActionType = "click" | "input" | "blur";
 
@@ -6,13 +6,51 @@ export const actions : any[] = ["click", "input", "blur"];
 
 export type Infos = basicInfo | performanceInfo | envInfo | errorInfo | actionInfo;
 
-export type emitType = "image" | "fetch" | "xhr" | "custom";
+export type EmitType = "image" | "fetch" | "xhr" | "custom";
 
-export type msgSource = "unkown" | "native" | "error" | "action" | "uncaught" | "vue" | "spa" | "costom";
+export type MsgSource = "unkown" | InfoType | "costom";
 
-export type msgLevel = "info" | "warning" | "error" | "crash";
+export type MsgLevel = "info" | "warning" | "error" | "crash";
 
-export interface basicInfo {
+export interface msgInfo {
+   // 消息说明
+   msg: string
+   // 消息源
+   ms: MsgSource
+   // 消息等级
+   ml: MsgLevel
+}
+
+export interface networkInfo {
+  // 有效网络连接类型
+  ct: string
+  // 估算的下行速度/带宽
+  cs?: string
+  // 估算的往返时间
+  cr?: string
+  // 打开/请求数据保护模式
+  csa?: string
+}
+
+
+export interface envInfo {
+  // 设备号
+  dId: string
+  // 设备类型
+  dt: string
+  // 系统
+  sys: string
+  //系统版本
+  sv: string
+  //设备宽度像素
+  sw: number
+  // 设备高度像素
+  sh: number
+  // 当前版本号
+  v: string
+}
+
+export interface basicInfo extends networkInfo, msgInfo, envInfo {
   // 单次会话唯一表示
   uni: string
   // 当前页面
@@ -21,86 +59,53 @@ export interface basicInfo {
   uId: string
   // 用户角色
   rId: string
-  // 网络
-  ct: string
-  // 消息说明
-  msg: string
-  // 消息源
-  ms: msgSource
-  // 消息等级
-  ml: msgLevel
 }
 
 export interface performanceInfo extends basicInfo {
   // DNS解析时间
-  dnst: number
-  //TCP建立时间
-  tcpt: number
+  dnst?: number
+  // TCP建立时间
+  tcpt?: number
   // 白屏时间  
-  wit: number
-  //dom渲染完成时间
-  domt: number
-  //页面onload时间
-  lodt: number
+  wit?: number
+  // dom渲染完成时间
+  domt?: number
+  // 页面onload时间
+  lodt?: number
   // 页面准备时间 
-  radt: number
+  radt?: number
   // 页面重定向时间
-  rdit: number
+  rdit?: number
   // unload时间
-  uodt: number
-  //request请求耗时
-  reqt: number
-  //页面解析dom耗时
-  andt: number
-}
-
-export interface envInfo extends basicInfo {
-  // 设备号
-  dId: string
-  // 设备类型
-  dType: string
-  // 系统
-  sys: string
-  //系统版本
-  sysV: string
-  //设备宽度像素
-  dpiW: number
-  // 设备高度像素
-  dpiH: number
-  // 当前版本号
-  v: string
+  uodt?: number
+  // request请求耗时
+  reqt?: number
+  // 页面解析dom耗时
+  andt?: number
 }
 
 export interface errorInfo extends basicInfo {
+  // 文件名字和路径
   file: string,
+  // 错误行号
   line: number,
+  // 错误列号
   col: number,
+  // 错误堆栈信息
   stack: string
 }
 
 export interface actionInfo extends basicInfo {
-  /**
-   * 行为类型
-   */
+  // 行为类型
   at: string,
-  /**
-   * 元素信息
-   */
+  // 元素信息
   el?: string,
-  /**
-   * 行为描述
-   */
+  // 行为描述
   ad?: string,
-  /**
-   * 键盘事件独有，表示那个按键被点击
-   */
+  // 键盘事件独有，表示那个按键被点击
   key?: string
-  /**
-   * 鼠标或者手指横坐标
-   */
+  // 鼠标或者手指横坐标
   x?: number,
-  /**
-   * 鼠标或者手指纵坐标
-   */
+  // 鼠标或者手指纵坐标
   y?: number
 }

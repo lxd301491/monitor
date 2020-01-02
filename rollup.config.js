@@ -6,13 +6,18 @@ const typescript = require("rollup-plugin-typescript2");
 // const babel = require('rollup-plugin-babel');
 const rollup = require("rollup");
 const builtins = require("rollup-plugin-node-builtins");
-
+const replace = require("rollup-plugin-replace");
+let pkg = require('./package.json');
 
 
 // see below for details on the options
 const inputOptions = {
   input: "types/index.d.ts",
   plugins: [
+    replace({
+      VERSION: pkg.version,
+      delimiters: ['{{', '}}']
+    }),
     nodeResolve({
       browser: true,
       preferBuiltins:true

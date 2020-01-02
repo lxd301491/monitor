@@ -1,7 +1,7 @@
 import { AbstractHook } from "./AbstractHook";
 import { replace } from "../decorators/LifeCycle";
 
-class SPARouterHook extends AbstractHook {
+export class SPARouterHook extends AbstractHook {
   initlize(options: any): AbstractHook {
     throw new Error("Method not implemented.");
   }  

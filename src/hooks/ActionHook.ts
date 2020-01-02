@@ -1,15 +1,7 @@
 import { AbstractHook } from "./AbstractHook";
-import { MonitorProvider } from "../MonitorProvider";
-import { on, off } from "../tools";
+import { on, off, getBasicInfo } from "../tools";
 import { actions } from "../typings";
 export class ActionHook extends AbstractHook {
-  initlize (options: {
-    private?: MonitorProvider
-  }) {
-    this.private = options.private || this.private;
-    return this;
-  }
-
   private getCurrentElement(target: HTMLElement) {
     let r = target.outerHTML.match("<.+?>");
     return r && r[0] || "";
@@ -17,10 +9,9 @@ export class ActionHook extends AbstractHook {
   
   private listener(evt: UIEvent) {
     if (!this.private) return;
-    console.log(evt);
     if (evt instanceof MouseEvent) {
         this.private.track({
-          ...this.private.getBasicInfo(),
+          ...getBasicInfo(),
           msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
           ms: "action",
           ml: "info",
@@ -31,7 +22,7 @@ export class ActionHook extends AbstractHook {
         });
     } else if (evt instanceof FocusEvent) {
       this.private.track({
-        ...this.private.getBasicInfo(),
+        ...getBasicInfo(),
         msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
         ms: "action",
         ml: "info",
@@ -40,12 +31,21 @@ export class ActionHook extends AbstractHook {
       });
     } else if (evt instanceof KeyboardEvent) {
       this.private.track({
-        ...this.private.getBasicInfo(),
+        ...getBasicInfo(),
         msg: `${evt.type} ${evt.key}`,
         ms: "action",
         ml: "info",
         at: evt.type,
         key: evt.key
+      });
+    } else if (evt instanceof InputEvent) {
+      this.private.track({
+        ...getBasicInfo(),
+        msg: `${evt.inputType} ${evt.data}`,
+        ms: "action",
+        ml: "info",
+        at: evt.type,
+        key: evt.data || ""
       });
     }
   }

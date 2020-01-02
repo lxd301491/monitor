@@ -141,12 +141,39 @@ function after(target, methodName, descriptor) {
         }
     };
 }
+function replace(target, methodName, replacer) {
+    window._replace_center_[methodName] = target[methodName];
+    target[methodName] = replacer;
+}
 
 /**
  * cookie过期时间
  */
 var expiredays = 24 * 60 * 60 * 1000;
 
+function getBasicInfo() {
+    return __assign({}, getUniqueInfo(), getConnection(), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", msg: "", ms: "unkown", ml: "info", 
+        // 设备号
+        dId: getCookie("deviceId") || "", 
+        // 设备类型
+        dType: getCookie("deviceType") || "", 
+        // 系统
+        sys: getCookie("sys") || "", 
+        //系统版本
+        sysV: getCookie("sysVersion") || "", 
+        //设备宽度像素
+        dpiW: getScreen().w, 
+        // 设备高度像素
+        dpiH: getScreen().h, 
+        // 当前版本号
+        v: '1.0.7' });
+}
+function getScreen() {
+    return {
+        w: document.documentElement.clientWidth || document.body.clientWidth,
+        h: document.documentElement.clientHeight || document.body.clientHeight
+    };
+}
 /**
  * 获取随机数 例子:Ab23cD_1546313114
  * @param len 长度
@@ -182,7 +209,61 @@ function getUniqueInfo() {
         exdate.setDate(exdate.getDate() + expiredays);
         document.cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
     }
-    return uni;
+    return {
+        uni: uni
+    };
+}
+/**
+ * 统计页面性能
+ */
+function perforPage() {
+    if (!window.performance)
+        return {};
+    var timing = performance.timing;
+    return {
+        // DNS解析时间
+        dnst: timing.domainLookupEnd - timing.domainLookupStart || 0,
+        //TCP建立时间
+        tcpt: timing.connectEnd - timing.connectStart || 0,
+        // 白屏时间  
+        wit: timing.responseStart - timing.navigationStart || 0,
+        //dom渲染完成时间
+        domt: timing.domContentLoadedEventEnd - timing.navigationStart || 0,
+        //页面onload时间
+        lodt: timing.loadEventEnd - timing.navigationStart || 0,
+        // 页面准备时间 
+        radt: timing.fetchStart - timing.navigationStart || 0,
+        // 页面重定向时间
+        rdit: timing.redirectEnd - timing.redirectStart || 0,
+        // unload时间
+        uodt: timing.unloadEventEnd - timing.unloadEventStart || 0,
+        //request请求耗时
+        reqt: timing.responseEnd - timing.requestStart || 0,
+        //页面解析dom耗时
+        andt: timing.domComplete - timing.domInteractive || 0,
+    };
+}
+/**
+ * 获取网络情况
+ */
+function getConnection() {
+    var connection = navigator.connection;
+    if (!connection) {
+        return {
+            ct: navigator.onLine ? "online" : "offline"
+        };
+    }
+    var rtt = connection.rtt, downlink = connection.downlink, effectiveType = connection.effectiveType, saveData = connection.saveData;
+    return {
+        // 有效网络连接类型
+        ct: effectiveType,
+        // 估算的下行速度/带宽
+        cs: downlink + "Mb/s",
+        // 估算的往返时间
+        cr: rtt + "ms",
+        // 打开/请求数据保护模式
+        csa: saveData
+    };
 }
 function on(event, listener, remove) {
     if (window.addEventListener) {
@@ -209,30 +290,15 @@ function off(event, listener) {
 
 var MonitorProvider = /** @class */ (function () {
     function MonitorProvider(store) {
-        this.basicInfo = {
-            uni: getUniqueInfo(),
-            page: "",
-            uId: "",
-            rId: "",
-            ct: "",
-            msg: "",
-            ms: "unkown",
-            ml: "info"
-        };
         this.store = store;
     }
     MonitorProvider.prototype.mountStore = function (store) {
         this.store = store;
     };
-    MonitorProvider.prototype.setBasicInfo = function (basicInfo) {
-        this.basicInfo = __assign({}, this.basicInfo, basicInfo);
-    };
-    MonitorProvider.prototype.getBasicInfo = function () {
-        return this.basicInfo;
-    };
     MonitorProvider.prototype.track = function (params) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
+                params = __assign({}, params, getConnection());
                 if (this.store)
                     this.store.push(params);
                 return [2 /*return*/, this];
@@ -11701,7 +11767,8 @@ var Store = /** @class */ (function () {
 }());
 
 var AbstractHook = /** @class */ (function () {
-    function AbstractHook() {
+    function AbstractHook(_private) {
+        this.private = _private;
     }
     return AbstractHook;
 }());
@@ -11714,7 +11781,6 @@ var AladdinHook = /** @class */ (function (_super) {
         return _this;
     }
     AladdinHook.prototype.initlize = function (options) {
-        this.private = options.private || this.private;
         this.aladdin = options.aladdin || this.aladdin;
         return this;
     };
@@ -11731,12 +11797,15 @@ var AladdinHook = /** @class */ (function (_super) {
                 handler: setTimeout(function () {
                     if (!_this.private)
                         return;
-                    _this.private.track(__assign({}, _this.private.getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
+                    _this.private.track(__assign({}, getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
                 }, 20000)
             });
         }
     };
     AladdinHook.prototype.callbackListener = function (params) {
+        if (!this.private) {
+            throw Error("AladdinHook callbackListener private has not initlized");
+        }
         var callId = params.handlerKey.split("_")[0];
         var timer = this.timers.filter(function (item) {
             return item.callId === callId;
@@ -11746,12 +11815,12 @@ var AladdinHook = /** @class */ (function (_super) {
         clearTimeout(timer.handler);
         var duration = new Date().getTime() - timer.timestamp;
         if (duration > 5000) {
-            this.private && this.private.track(__assign({}, this.private.getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
+            this.private.track(__assign({}, getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
         }
     };
     AladdinHook.prototype.watch = function () {
-        if (!this.private || !this.aladdin) {
-            throw Error("VueHook can not start watch, has not initlized");
+        if (!this.aladdin) {
+            throw Error("AladdinHook can not start watch, has not initlized");
         }
         this.aladdin.on("call", this.callListener.bind(this));
         this.aladdin.on("callback", this.callbackListener.bind(this));
@@ -11777,13 +11846,10 @@ var ErrorHook = /** @class */ (function (_super) {
     function ErrorHook() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    ErrorHook.prototype.initlize = function (options) {
-        this.private = options.private || this.private;
-        return this;
-    };
     ErrorHook.prototype.listener = function (evt) {
-        if (!this.private)
-            return;
+        if (!this.private) {
+            throw Error("GlobalErrorHook can not start watch, has not initlized");
+        }
         evt.stopPropagation();
         evt.preventDefault();
         if (evt.target instanceof HTMLImageElement ||
@@ -11792,7 +11858,7 @@ var ErrorHook = /** @class */ (function (_super) {
             var src = evt.target instanceof HTMLImageElement ||
                 evt.target instanceof HTMLScriptElement ? evt.target.src :
                 evt.target instanceof HTMLLinkElement ? evt.target.href : "";
-            this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
+            this.private.track(__assign({}, getBasicInfo(), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
         }
         else {
             var stack = "";
@@ -11816,13 +11882,10 @@ var ErrorHook = /** @class */ (function (_super) {
                 }
                 stack = ext.join(",");
             }
-            this.private.track(__assign({}, this.private.getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
+            this.private.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
         }
     };
     ErrorHook.prototype.watch = function () {
-        if (!this.private) {
-            throw Error("GlobalErrorHook can not start watch, has not initlized");
-        }
         on("error", this.listener.bind(this));
     };
     ErrorHook.prototype.unwatch = function () {
@@ -11838,10 +11901,6 @@ var ActionHook = /** @class */ (function (_super) {
     function ActionHook() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    ActionHook.prototype.initlize = function (options) {
-        this.private = options.private || this.private;
-        return this;
-    };
     ActionHook.prototype.getCurrentElement = function (target) {
         var r = target.outerHTML.match("<.+?>");
         return r && r[0] || "";
@@ -11849,15 +11908,17 @@ var ActionHook = /** @class */ (function (_super) {
     ActionHook.prototype.listener = function (evt) {
         if (!this.private)
             return;
-        console.log(evt);
         if (evt instanceof MouseEvent) {
-            this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
+            this.private.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
         }
         else if (evt instanceof FocusEvent) {
-            this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
+            this.private.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
         }
         else if (evt instanceof KeyboardEvent) {
-            this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
+            this.private.track(__assign({}, getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
+        }
+        else if (evt instanceof InputEvent) {
+            this.private.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
         }
     };
     ActionHook.prototype.watch = function () {
@@ -11903,16 +11964,12 @@ var UncaughtHook = /** @class */ (function (_super) {
     function UncaughtHook() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    UncaughtHook.prototype.initlize = function (options) {
-        this.private = options.private || this.private;
-        return this;
-    };
     UncaughtHook.prototype.listener = function (evt) {
         if (!this.private)
             return;
         evt.stopPropagation();
         evt.preventDefault();
-        this.private.track(__assign({}, this.private.getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
+        this.private.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
     };
     UncaughtHook.prototype.watch = function () {
         if (!this.private) {
@@ -11926,53 +11983,78 @@ var UncaughtHook = /** @class */ (function (_super) {
     return UncaughtHook;
 }(AbstractHook));
 
-var VueHook = /** @class */ (function (_super) {
-    __extends(VueHook, _super);
-    function VueHook() {
+var SPARouterHook = /** @class */ (function (_super) {
+    __extends(SPARouterHook, _super);
+    function SPARouterHook() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    VueHook.prototype.initlize = function (options) {
-        this.private = options.private || this.private;
-        this.vueConfig = options.vue ? options.vue.config : this.vueConfig;
-        return this;
+    SPARouterHook.prototype.initlize = function (options) {
+        throw new Error("Method not implemented.");
     };
-    VueHook.prototype.watch = function () {
-        var _this = this;
-        if (!this.private || !this.vueConfig) {
-            throw Error("VueHook can not start watch, has not initlized");
-        }
-        this.vueConfig.errorHandler = function (err, vm, info) {
-            var comFloor = "";
-            if (vm) {
-                var cur = vm;
-                comFloor = vm.$options.name;
-                while ((cur = cur.$parent)) {
-                    comFloor = vm.$options.name + "=>" + comFloor;
-                }
-            }
-            _this.private && _this.private.track(__assign({}, _this.private.getBasicInfo(), { msg: err.message, file: comFloor + " " + info, stack: err.stack, line: err.line, col: err.colum, ms: "vue", ml: "error" }));
+    SPARouterHook.prototype.hackOnpopstate = function () {
+        window['_onpopstate_'] = window.onpopstate;
+        window.onpopstate = function () {
+            for (var r = arguments.length, a = new Array(r), o = 0; o < r; o++)
+                a[o] = arguments[o];
+            if (window._onpopstate_)
+                return window._onpopstate_.apply(this, a);
         };
     };
-    VueHook.prototype.unwatch = function () {
-        this.vueConfig.errorHandler = undefined;
+    SPARouterHook.prototype.hackState = function (e) {
+        if (!window['_onpopstate_']) {
+            // 调用pushState或replaceState时hack Onpopstate
+            replace(window, "onpopstate", function () {
+                for (var r = arguments.length, a = new Array(r), o = 0; o < r; o++)
+                    a[o] = arguments[o];
+                if (window._onpopstate_)
+                    return window._onpopstate_.apply(this, a);
+            });
+        }
     };
-    return VueHook;
+    SPARouterHook.prototype.watch = function () {
+        throw new Error("Method not implemented.");
+    };
+    SPARouterHook.prototype.unwatch = function () {
+        throw new Error("Method not implemented.");
+    };
+    return SPARouterHook;
+}(AbstractHook));
+
+var PerformanceHook = /** @class */ (function (_super) {
+    __extends(PerformanceHook, _super);
+    function PerformanceHook() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    PerformanceHook.prototype.listener = function (evt) {
+        if (!this.private) {
+            throw Error("UIEventHook can not start watch, has not initlized");
+        }
+        this.private.track(__assign({}, getBasicInfo(), perforPage()));
+    };
+    PerformanceHook.prototype.watch = function () {
+        on("load", this.listener);
+    };
+    PerformanceHook.prototype.unwatch = function () {
+        off("load", this.listener);
+    };
+    return PerformanceHook;
 }(AbstractHook));
 
 var HooksStore = /** @class */ (function () {
     function HooksStore(_private) {
         this.hooks = new Map();
-        this.hooks.set("native", new AladdinHook().initlize({ private: _private }));
-        this.hooks.set("error", new ErrorHook().initlize({ private: _private }));
-        this.hooks.set("action", new ActionHook().initlize({ private: _private }));
-        this.hooks.set("uncaught", new UncaughtHook().initlize({ private: _private }));
-        this.hooks.set("vue", new VueHook().initlize({ private: _private }));
+        this.hooks.set("native", new AladdinHook(_private).initlize({}));
+        this.hooks.set("error", new ErrorHook(_private));
+        this.hooks.set("action", new ActionHook(_private));
+        this.hooks.set("uncaught", new UncaughtHook(_private));
+        this.hooks.set("spa", new SPARouterHook(_private));
+        this.hooks.set("performance", new PerformanceHook(_private));
     }
     HooksStore.prototype.watch = function (type, options) {
         var hook = this.hooks.get(type);
         if (hook) {
-            if (options) {
-                hook.initlize(options);
+            if (hook instanceof AladdinHook) {
+                options && hook.initlize(options);
             }
             hook.watch();
         }
