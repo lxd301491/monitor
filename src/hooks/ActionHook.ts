@@ -8,7 +8,6 @@ export class ActionHook extends AbstractHook {
   }
   
   private listener(evt: UIEvent) {
-    if (!this.private) return;
     if (evt instanceof MouseEvent) {
         this.private.track({
           ...getBasicInfo(),
@@ -51,9 +50,6 @@ export class ActionHook extends AbstractHook {
   }
 
   watch(): void {
-    if (!this.private) {
-      throw Error("UIEventHook can not start watch, has not initlized");
-    }
     for (let action of actions) {
       on(action, this.listener.bind(this));
     }

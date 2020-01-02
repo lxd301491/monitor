@@ -3,22 +3,19 @@ import { perforPage, on, off, getBasicInfo } from "../tools";
 
 export class PerformanceHook extends AbstractHook {
   private listener (evt: Event) {
-    if (!this.private) {
-      throw Error("UIEventHook can not start watch, has not initlized");
-    }
-    this.private.track({
-      ...getBasicInfo(),
-      ...perforPage()
-    })
+    setTimeout(() => {
+      this.private.track({
+        ...getBasicInfo(),
+        ...perforPage()
+      });
+    }, 20);
   }
-
+  
   watch(): void {
-    on("load", this.listener);
+    on("load", this.listener.bind(this));
   }
 
   unwatch(): void {
-    off("load", this.listener);
+    off("load", this.listener.bind(this));
   }
-
- 
 }

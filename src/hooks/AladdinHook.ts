@@ -23,7 +23,6 @@ export class AladdinHook extends AbstractHook {
         args: args,
         timestamp: new Date().getTime(),
         handler: setTimeout(() => {
-          if (!this.private) return;
           this.private.track({
             ...getBasicInfo(),
             msg: `${args[0].url} timeout 20000+`,
@@ -36,9 +35,6 @@ export class AladdinHook extends AbstractHook {
   }
 
   private callbackListener(params: any) {
-    if (!this.private) {
-      throw Error("AladdinHook callbackListener private has not initlized");
-    }
     let callId: string = params.handlerKey.split("_")[0];
     let timer: any = this.timers.filter((item: any) => {
       return item.callId === callId;

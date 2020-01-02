@@ -3,9 +3,6 @@ import { on, off, getBasicInfo } from "../tools";
 
 export class ErrorHook extends AbstractHook {
   private listener (evt: ErrorEvent) {
-    if (!this.private) {
-      throw Error("GlobalErrorHook can not start watch, has not initlized");
-    }
     evt.stopPropagation();
     evt.preventDefault();
     if (evt.target instanceof HTMLImageElement ||

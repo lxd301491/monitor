@@ -158,15 +158,15 @@
             // 设备号
             dId: getCookie("deviceId") || "", 
             // 设备类型
-            dType: getCookie("deviceType") || "", 
+            dt: getCookie("deviceType") || "", 
             // 系统
             sys: getCookie("sys") || "", 
             //系统版本
-            sysV: getCookie("sysVersion") || "", 
+            sv: getCookie("sysVersion") || "", 
             //设备宽度像素
-            dpiW: getScreen().w, 
+            sw: getScreen().w, 
             // 设备高度像素
-            dpiH: getScreen().h, 
+            sh: getScreen().h, 
             // 当前版本号
             v: '1.0.7' });
     }
@@ -11797,17 +11797,12 @@
                     args: args,
                     timestamp: new Date().getTime(),
                     handler: setTimeout(function () {
-                        if (!_this.private)
-                            return;
                         _this.private.track(__assign({}, getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
                     }, 20000)
                 });
             }
         };
         AladdinHook.prototype.callbackListener = function (params) {
-            if (!this.private) {
-                throw Error("AladdinHook callbackListener private has not initlized");
-            }
             var callId = params.handlerKey.split("_")[0];
             var timer = this.timers.filter(function (item) {
                 return item.callId === callId;
@@ -11849,9 +11844,6 @@
             return _super !== null && _super.apply(this, arguments) || this;
         }
         ErrorHook.prototype.listener = function (evt) {
-            if (!this.private) {
-                throw Error("GlobalErrorHook can not start watch, has not initlized");
-            }
             evt.stopPropagation();
             evt.preventDefault();
             if (evt.target instanceof HTMLImageElement ||
@@ -11908,8 +11900,6 @@
             return r && r[0] || "";
         };
         ActionHook.prototype.listener = function (evt) {
-            if (!this.private)
-                return;
             if (evt instanceof MouseEvent) {
                 this.private.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
             }
@@ -11925,9 +11915,6 @@
         };
         ActionHook.prototype.watch = function () {
             var e_1, _a;
-            if (!this.private) {
-                throw Error("UIEventHook can not start watch, has not initlized");
-            }
             try {
                 for (var actions_1 = __values(actions), actions_1_1 = actions_1.next(); !actions_1_1.done; actions_1_1 = actions_1.next()) {
                     var action = actions_1_1.value;
@@ -11967,16 +11954,11 @@
             return _super !== null && _super.apply(this, arguments) || this;
         }
         UncaughtHook.prototype.listener = function (evt) {
-            if (!this.private)
-                return;
             evt.stopPropagation();
             evt.preventDefault();
             this.private.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
         };
         UncaughtHook.prototype.watch = function () {
-            if (!this.private) {
-                throw Error("UncaughtHook can not start watch, has not initlized");
-            }
             on("unhandledrejection", this.listener.bind(this));
         };
         UncaughtHook.prototype.unwatch = function () {
@@ -11990,9 +11972,6 @@
         function SPARouterHook() {
             return _super !== null && _super.apply(this, arguments) || this;
         }
-        SPARouterHook.prototype.initlize = function (options) {
-            throw new Error("Method not implemented.");
-        };
         SPARouterHook.prototype.hackOnpopstate = function () {
             window['_onpopstate_'] = window.onpopstate;
             window.onpopstate = function () {
@@ -12028,16 +12007,16 @@
             return _super !== null && _super.apply(this, arguments) || this;
         }
         PerformanceHook.prototype.listener = function (evt) {
-            if (!this.private) {
-                throw Error("UIEventHook can not start watch, has not initlized");
-            }
-            this.private.track(__assign({}, getBasicInfo(), perforPage()));
+            var _this = this;
+            setTimeout(function () {
+                _this.private.track(__assign({}, getBasicInfo(), perforPage()));
+            }, 20);
         };
         PerformanceHook.prototype.watch = function () {
-            on("load", this.listener);
+            on("load", this.listener.bind(this));
         };
         PerformanceHook.prototype.unwatch = function () {
-            off("load", this.listener);
+            off("load", this.listener.bind(this));
         };
         return PerformanceHook;
     }(AbstractHook));
