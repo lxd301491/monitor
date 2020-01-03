@@ -25,6 +25,6 @@ export class VueHook extends AbstractHook {
   }
   
   unwatch(): void {
-    Vue.config.errorHandler =  (err: any, vm: any, info: string) => {};
+    delete Vue.config.errorHandler;
   }
 }
