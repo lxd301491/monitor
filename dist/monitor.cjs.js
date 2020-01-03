@@ -182,7 +182,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.0.1' });
+        v: '1.0.6' });
 }
 function getScreen() {
     return {
@@ -11816,10 +11816,6 @@ var AladdinHook = /** @class */ (function (_super) {
         _this.timers = [];
         return _this;
     }
-    AladdinHook.prototype.initlize = function (options) {
-        this.aladdin = options.aladdin || this.aladdin;
-        return this;
-    };
     AladdinHook.prototype.callListener = function (params) {
         var _this = this;
         var action = params.action, args = params.args, callId = params.callId;
@@ -11849,7 +11845,8 @@ var AladdinHook = /** @class */ (function (_super) {
             this.provider.track(__assign({}, getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
         }
     };
-    AladdinHook.prototype.watch = function () {
+    AladdinHook.prototype.watch = function (container) {
+        this.aladdin = container || this.aladdin;
         if (!this.aladdin) {
             throw Error("AladdinHook can not start watch, has not initlized");
         }
@@ -11913,7 +11910,7 @@ var ErrorHook = /** @class */ (function (_super) {
             this.provider.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
         }
     };
-    ErrorHook.prototype.watch = function () {
+    ErrorHook.prototype.watch = function (container) {
         on("error", this.listener.bind(this));
     };
     ErrorHook.prototype.unwatch = function () {
@@ -11947,7 +11944,7 @@ var ActionHook = /** @class */ (function (_super) {
             this.provider.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
         }
     };
-    ActionHook.prototype.watch = function () {
+    ActionHook.prototype.watch = function (container) {
         var e_1, _a;
         try {
             for (var actions_1 = __values(actions), actions_1_1 = actions_1.next(); !actions_1_1.done; actions_1_1 = actions_1.next()) {
@@ -11992,7 +11989,7 @@ var UncaughtHook = /** @class */ (function (_super) {
         evt.preventDefault();
         this.provider.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
     };
-    UncaughtHook.prototype.watch = function () {
+    UncaughtHook.prototype.watch = function (container) {
         on("unhandledrejection", this.listener.bind(this));
     };
     UncaughtHook.prototype.unwatch = function () {
@@ -12039,7 +12036,7 @@ var SPARouterHook = /** @class */ (function (_super) {
         var page = parseHash(e.detail.toLowerCase());
         pv(this.provider, page);
     };
-    SPARouterHook.prototype.watch = function () {
+    SPARouterHook.prototype.watch = function (container) {
         this.hackState('pushState');
         this.hackState('replaceState');
         on('hashchange', this.handleHashchange.bind(this));
@@ -12065,7 +12062,7 @@ var PerformanceHook = /** @class */ (function (_super) {
             _this.provider.track(__assign({}, getBasicInfo(), perforPage()));
         }, 20);
     };
-    PerformanceHook.prototype.watch = function () {
+    PerformanceHook.prototype.watch = function (container) {
         on("load", this.listener.bind(this));
     };
     PerformanceHook.prototype.unwatch = function () {
@@ -12074,24 +12071,50 @@ var PerformanceHook = /** @class */ (function (_super) {
     return PerformanceHook;
 }(AbstractHook));
 
+var VueHook = /** @class */ (function (_super) {
+    __extends(VueHook, _super);
+    function VueHook() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    VueHook.prototype.watch = function (container) {
+        var _this = this;
+        this.vue = container || this.vue;
+        if (!this.vue) {
+            throw Error("VueHook can not start watch, has not initlized");
+        }
+        this.vue.config.errorHandler = function (err, vm, info) {
+            var comFloor = "";
+            if (vm) {
+                var cur = vm;
+                comFloor = vm.$options.name;
+                while ((cur = cur.$parent)) {
+                    comFloor = vm.$options.name + "=>" + comFloor;
+                }
+            }
+            _this.provider && _this.provider.track(__assign({}, getBasicInfo(), { msg: err.name + " " + err.message, file: comFloor + " " + info, stack: err.stack, ms: "vue", ml: "error" }));
+        };
+    };
+    VueHook.prototype.unwatch = function () {
+        delete this.vue.config.errorHandler;
+    };
+    return VueHook;
+}(AbstractHook));
+
 var HooksStore = /** @class */ (function () {
     function HooksStore(provider) {
         this.hooks = new Map();
-        this.hooks.set("native", new AladdinHook(provider).initlize({}));
+        this.hooks.set("native", new AladdinHook(provider));
         this.hooks.set("error", new ErrorHook(provider));
         this.hooks.set("action", new ActionHook(provider));
         this.hooks.set("uncaught", new UncaughtHook(provider));
         this.hooks.set("spa", new SPARouterHook(provider));
         this.hooks.set("performance", new PerformanceHook(provider));
+        this.hooks.set("vue", new VueHook(provider));
     }
-    HooksStore.prototype.watch = function (type, options) {
+    HooksStore.prototype.watch = function (type, container) {
         var hook = this.hooks.get(type);
-        if (hook) {
-            if (hook instanceof AladdinHook) {
-                options && hook.initlize(options);
-            }
-            hook.watch();
-        }
+        if (hook)
+            hook.watch(container);
     };
     HooksStore.prototype.unwatch = function (type) {
         var hook = this.hooks.get(type);

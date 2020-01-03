@@ -13,7 +13,7 @@ export class HooksStore {
   private hooks: Map<InfoType, AbstractHook> = new Map();
 
   constructor (provider: MonitorProvider) {
-    this.hooks.set("native", new AladdinHook(provider).initlize({}));
+    this.hooks.set("native", new AladdinHook(provider));
     this.hooks.set("error", new ErrorHook(provider));
     this.hooks.set("action", new ActionHook(provider));
     this.hooks.set("uncaught", new UncaughtHook(provider));
@@ -22,14 +22,9 @@ export class HooksStore {
     this.hooks.set("vue", new VueHook(provider));
   }
 
-  public watch(type: InfoType, options ?: any) {
+  public watch(type: InfoType, container?: any) {
     let hook = this.hooks.get(type);
-    if (hook) {
-      if (hook instanceof AladdinHook) {
-        options && hook.initlize(options);
-      }
-      hook.watch();
-    } 
+    if (hook) hook.watch(container);
   }
 
   public unwatch(type: InfoType) {

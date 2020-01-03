@@ -1,10 +1,15 @@
 import { AbstractHook } from "./AbstractHook";
-import Vue from "vue";
 import { getBasicInfo } from "../tools";
 
 export class VueHook extends AbstractHook {
-  watch(): void {
-    Vue.config.errorHandler = (err: Error, vm: any, info: string) => {
+  private vue: any;
+
+  watch(container?: any): void {
+    this.vue = container || this.vue;
+    if (!this.vue) {
+      throw Error("VueHook can not start watch, has not initlized");
+    }
+    this.vue.config.errorHandler = (err: Error, vm: any, info: string) => {
       let comFloor: string = "";
       if (vm) {
         let cur = vm;
@@ -25,6 +30,6 @@ export class VueHook extends AbstractHook {
   }
   
   unwatch(): void {
-    delete Vue.config.errorHandler;
+    delete this.vue.config.errorHandler;
   }
 }

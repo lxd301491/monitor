@@ -4,13 +4,6 @@ export class AladdinHook extends AbstractHook {
   private timers: any[] = [];
   private aladdin: any;
 
-  initlize (options: {
-    aladdin?: {on: Function, off: Function}
-  }) {
-    this.aladdin = options.aladdin || this.aladdin;
-    return this;
-  }
-
   private callListener(params: any) {
     let { action, args, callId } = params;
     if (
@@ -52,7 +45,8 @@ export class AladdinHook extends AbstractHook {
     }
   }
 
-  watch(): void {
+  watch(container?: any): void {
+    this.aladdin = container || this.aladdin;
     if (!this.aladdin) {
       throw Error("AladdinHook can not start watch, has not initlized");
     }

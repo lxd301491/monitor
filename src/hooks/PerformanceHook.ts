@@ -11,7 +11,7 @@ export class PerformanceHook extends AbstractHook {
     }, 20);
   }
   
-  watch(): void {
+  watch(container?: any): void {
     on("load", this.listener.bind(this));
   }
 
