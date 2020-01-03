@@ -1,7 +1,6 @@
 import { AbstractHook } from "./AbstractHook";
 import { replace, reduction } from "../decorators/LifeCycle";
 import { parseUrl, dispatchCustomEvent, on, parseHash, off, pv } from "../tools";
-import { MonitorProvider } from "../MonitorProvider";
 
 export class SPARouterHook extends AbstractHook {
   hackState(e: 'pushState' | 'replaceState') {
@@ -56,7 +55,4 @@ export class SPARouterHook extends AbstractHook {
     off('hashchange', this.handleHashchange.bind(this));
     off('historystatechanged', this.handleHistorystatechange.bind(this));
   }
-
-
-  
 }

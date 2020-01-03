@@ -1,4 +1,4 @@
-export type InfoType = "native" | "error" | "action" | "uncaught" | "spa" | "performance" | "pv";
+export type InfoType = "native" | "error" | "action" | "uncaught" | "spa" | "performance" | "vue" | "pv";
 
 export type ActionType = "click" | "input" | "blur";
 

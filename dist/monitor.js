@@ -184,7 +184,7 @@
             // 设备高度像素
             sh: getScreen().h, 
             // 当前版本号
-            v: '1.0.7' });
+            v: '1.0.1' });
     }
     function getScreen() {
         return {
