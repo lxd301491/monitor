@@ -1,4 +1,4 @@
-import { AladdinHook } from "./AladdinHook";
+import { NativeHook } from "./NativeHook";
 import { ErrorHook } from "./ErrorHook";
 import { ActionHook } from "./ActionHook";
 import { UncaughtHook } from "./UncaughtHook";
@@ -13,7 +13,7 @@ export class HooksStore {
   private hooks: Map<InfoType, AbstractHook> = new Map();
 
   constructor (provider: MonitorProvider) {
-    this.hooks.set("native", new AladdinHook(provider));
+    this.hooks.set("native", new NativeHook(provider));
     this.hooks.set("error", new ErrorHook(provider));
     this.hooks.set("action", new ActionHook(provider));
     this.hooks.set("uncaught", new UncaughtHook(provider));
@@ -22,15 +22,7 @@ export class HooksStore {
     this.hooks.set("vue", new VueHook(provider));
   }
 
-  public watch(type: InfoType, container?: any) {
-    let hook = this.hooks.get(type);
-    if (hook) hook.watch(container);
-  }
-
-  public unwatch(type: InfoType) {
-    let hook = this.hooks.get(type);
-    if (hook) {
-      hook.unwatch();
-    } 
+  public getHooks() {
+    return this.hooks;
   }
 }  

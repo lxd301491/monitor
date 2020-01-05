@@ -1,7 +1,7 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
     typeof define === 'function' && define.amd ? define(['exports'], factory) :
-    (global = global || self, factory(global.PAMonitor = {}));
+    (global = global || self, factory(global.Monitor = {}));
 }(this, function (exports) { 'use strict';
 
     /*! *****************************************************************************
@@ -184,7 +184,7 @@
             // 设备高度像素
             sh: getScreen().h, 
             // 当前版本号
-            v: '1.0.8' });
+            v: '1.0.16' });
     }
     function getScreen() {
         return {
@@ -354,21 +354,31 @@
      * 计数器
      */
     var Counter = /** @class */ (function () {
-        function Counter(num) {
-            if (num === void 0) { num = 0; }
-            this.num = num;
+        function Counter(reserved) {
+            this.nums = [];
+            this.reserved = reserved;
         }
         Counter.prototype.get = function () {
-            return this.num;
+            var _this = this;
+            var now = Date.now();
+            this.nums = this.nums.filter(function (num) {
+                return num > now - _this.reserved * 1000;
+            });
+            return this.nums.length;
         };
         Counter.prototype.increase = function () {
-            this.num++;
+            var _this = this;
+            var now = Date.now();
+            this.nums = this.nums.filter(function (num) {
+                return num > now - _this.reserved * 1000;
+            });
+            this.nums.push(Date.now());
         };
         Counter.prototype.decrease = function () {
-            this.num--;
+            this.nums.shift();
         };
         Counter.prototype.reset = function () {
-            this.num = 0;
+            this.nums = [];
         };
         return Counter;
     }());
@@ -396,18 +406,13 @@
             return breaker.getCount() <= limit;
         };
         HalfOpenState.prototype.checkout = function (breaker) {
-            var period = parseInt(breaker.thresholdForHalfOpen[1]) * 1000;
-            var now = Date.now();
-            if (now >= this.startTime + period) {
-                breaker.reset();
-                if (breaker.getCount() > parseInt(breaker.thresholdForHalfOpen[0])) {
-                    // 依然超过断路阈值, 切到 `OpenState`
-                    breaker.setState(new OpenState());
-                }
-                else {
-                    // 低于断路阈值, 切到 `CloseState`
-                    breaker.setState(new CloseState());
-                }
+            if (breaker.getCount() > parseInt(breaker.thresholdForHalfOpen[0])) {
+                // 依然超过断路阈值, 切到 `OpenState`
+                breaker.setState(new OpenState());
+            }
+            else {
+                // 低于断路阈值, 切到 `CloseState`
+                breaker.setState(new CloseState());
             }
         };
         return HalfOpenState;
@@ -441,16 +446,8 @@
             return true;
         };
         CloseState.prototype.checkout = function (breaker) {
-            var period = parseInt(breaker.thresholdForOpen[1]) * 1000;
-            var now = Date.now();
-            if (now >= this.startTime + period) {
-                // 过了这段校验时间, 清零等待重新开始
-                this.startTime = Date.now();
-                breaker.reset();
-            }
             if (breaker.getCount() >= parseInt(breaker.thresholdForOpen[0])) {
                 // 在这段校验时间内, 超过断路阈值, 切换到 `OpenState`
-                breaker.reset();
                 breaker.setState(new OpenState());
             }
         };
@@ -459,15 +456,19 @@
 
     var CircuitBreaker = /** @class */ (function () {
         function CircuitBreaker(thresholdForOpen, idleTimeForOpen, thresholdForHalfOpen) {
-            if (thresholdForOpen === void 0) { thresholdForOpen = "600/60"; }
+            if (thresholdForOpen === void 0) { thresholdForOpen = "1/60"; }
             if (idleTimeForOpen === void 0) { idleTimeForOpen = 5 * 60; }
-            if (thresholdForHalfOpen === void 0) { thresholdForHalfOpen = "300/60"; }
+            if (thresholdForHalfOpen === void 0) { thresholdForHalfOpen = "1/60"; }
             this.idleTimeForOpen = idleTimeForOpen;
             this.thresholdForOpen = thresholdForOpen.split("/");
             this.thresholdForHalfOpen = thresholdForHalfOpen.split("/");
-            this.counter = new Counter(); // max times for each 60s
+            this.counter = new Counter(Math.max(parseInt(this.thresholdForOpen[1]), parseInt(this.thresholdForHalfOpen[1]))); // max times for each 60s
             this.state = new CloseState(); // default state
         }
+        CircuitBreaker.prototype.getStateName = function () {
+            /^function\s(.*)\(/.exec(this.state.constructor + "");
+            return RegExp.$1;
+        };
         CircuitBreaker.prototype.getState = function () {
             return this.state;
         };
@@ -478,15 +479,18 @@
             this.counter.reset();
         };
         CircuitBreaker.prototype.canPass = function () {
+            this.getState().checkout(this);
             return this.getState().canPass(this);
         };
         CircuitBreaker.prototype.count = function () {
             // 计数器 +1, 同时让 当前的 state 去做条件校验
             this.counter.increase();
-            this.getState().checkout(this);
         };
         CircuitBreaker.prototype.getCount = function () {
             return this.counter.get();
+        };
+        CircuitBreaker.prototype.getDuration = function () {
+            return (Date.now() - this.state.startTime) / 1000;
         };
         return CircuitBreaker;
     }());
@@ -8717,9 +8721,8 @@
         MonitorConsumer.prototype.start = function (period, storeParams) {
             var _this = this;
             if (period === void 0) { period = 15000; }
-            if (this.timer) {
-                return;
-            }
+            if (this.timer)
+                clearInterval(this.timer);
             this.timer = window.setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
                 var data;
                 return __generator(this, function (_a) {
@@ -8752,122 +8755,106 @@
                                 data = pako_1.gzip(data, { to: "string" });
                                 console.log("data length after gzip " + data.length);
                             }
+                            if (!this.frequencyBreaker.canPass() || !this.abnormalBreaker.canPass()) {
+                                console.log("frequencyBreaker count", this.frequencyBreaker.getCount(), this.frequencyBreaker.getStateName(), "Duration", this.frequencyBreaker.getDuration());
+                                console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "", this.abnormalBreaker.getDuration());
+                                return [2 /*return*/];
+                            }
                             this.frequencyBreaker.count();
                             _b.label = 1;
                         case 1:
-                            _b.trys.push([1, 9, , 10]);
+                            _b.trys.push([1, 11, , 12]);
                             _a = this.emitType;
                             switch (_a) {
                                 case "image": return [3 /*break*/, 2];
                                 case "xhr": return [3 /*break*/, 4];
                                 case "fetch": return [3 /*break*/, 6];
+                                case "beacon": return [3 /*break*/, 8];
                             }
-                            return [3 /*break*/, 8];
+                            return [3 /*break*/, 10];
                         case 2: return [4 /*yield*/, this.imageConsume(data)];
                         case 3:
                             _b.sent();
-                            return [3 /*break*/, 8];
+                            return [3 /*break*/, 10];
                         case 4: return [4 /*yield*/, this.xhrConsume(data)];
                         case 5:
                             _b.sent();
-                            return [3 /*break*/, 8];
+                            return [3 /*break*/, 10];
                         case 6: return [4 /*yield*/, this.fetchConsume(data)];
                         case 7:
                             _b.sent();
-                            return [3 /*break*/, 8];
-                        case 8: return [3 /*break*/, 10];
+                            return [3 /*break*/, 10];
+                        case 8: return [4 /*yield*/, this.beaconConsume(data)];
                         case 9:
+                            _b.sent();
+                            return [3 /*break*/, 10];
+                        case 10: return [3 /*break*/, 12];
+                        case 11:
                             err_1 = _b.sent();
                             this.abnormalBreaker.count();
-                            return [3 /*break*/, 10];
-                        case 10: return [2 /*return*/];
+                            return [3 /*break*/, 12];
+                        case 12: return [2 /*return*/];
                     }
                 });
             });
         };
         MonitorConsumer.prototype.imageConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                var img;
-                var _this = this;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            img = new Image();
-                            return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                    img.onerror = function (err) {
-                                        _this.abnormalBreaker.count();
-                                        reject(err);
-                                    };
-                                    img.onload = function (resp) {
-                                        resolve(resp);
-                                    };
-                                    img.onabort = function (resp) {
-                                        reject(resp);
-                                    };
-                                    img.src = _this.api + "?data=" + data;
-                                })];
-                        case 1: return [2 /*return*/, _a.sent()];
-                    }
-                });
+            var _this = this;
+            var img = new Image();
+            return new Promise(function (resolve, reject) {
+                img.onerror = function (err) {
+                    reject(err);
+                };
+                img.onload = function (resp) {
+                    resolve(resp);
+                };
+                img.onabort = function (resp) {
+                    reject(resp);
+                };
+                img.src = _this.api + "?data=" + data;
             });
         };
         MonitorConsumer.prototype.xhrConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                var xhr;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            xhr = new XMLHttpRequest();
-                            xhr.open("POST", this.api, true);
-                            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                            return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                    xhr.onload = function (resp) {
-                                        resolve(resp);
-                                    };
-                                    xhr.onabort = function (resp) {
-                                        resolve(resp);
-                                    };
-                                    xhr.onerror = function (err) {
-                                        reject(err);
-                                    };
-                                    xhr.onreadystatechange = function () {
-                                        if (xhr.readyState !== 4 || xhr.status !== 200) {
-                                            reject(xhr.readyState);
-                                        }
-                                    };
-                                    xhr.send(JSON.stringify({
-                                        data: data
-                                    }));
-                                })];
-                        case 1: return [2 /*return*/, _a.sent()];
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", this.api, true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            return new Promise(function (resolve, reject) {
+                xhr.onload = function (resp) {
+                    resolve(resp);
+                };
+                xhr.onabort = function (resp) {
+                    resolve(resp);
+                };
+                xhr.onerror = function (err) {
+                    reject(err);
+                };
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState !== 4 || xhr.status !== 200) {
+                        reject(xhr.readyState);
                     }
-                });
+                };
+                xhr.send(JSON.stringify({
+                    data: data
+                }));
             });
         };
         MonitorConsumer.prototype.fetchConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    if (!this.fetch) {
-                        return [2 /*return*/, false];
-                    }
-                    this.fetch.post(this.api, {
-                        data: data
-                    });
-                    return [2 /*return*/];
-                });
+            if (!this.fetch) {
+                return false;
+            }
+            return this.fetch.post(this.api, {
+                data: data
             });
         };
         MonitorConsumer.prototype.beaconConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
-                        return [2 /*return*/, false];
-                    }
-                    window.navigator.sendBeacon(this.api, JSON.stringify({
-                        data: data
-                    }));
-                    return [2 /*return*/];
-                });
+            var _this = this;
+            if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
+                return false;
+            }
+            return new Promise(function (resolve, reject) {
+                window.navigator.sendBeacon(_this.api, JSON.stringify({
+                    data: data
+                })) ? resolve() : reject();
             });
         };
         __decorate([
@@ -11811,64 +11798,32 @@
         return AbstractHook;
     }());
 
-    var AladdinHook = /** @class */ (function (_super) {
-        __extends(AladdinHook, _super);
-        function AladdinHook() {
-            var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.timers = [];
-            return _this;
+    var NativeHook = /** @class */ (function (_super) {
+        __extends(NativeHook, _super);
+        function NativeHook() {
+            return _super !== null && _super.apply(this, arguments) || this;
         }
-        AladdinHook.prototype.callListener = function (params) {
-            var _this = this;
-            var action = params.action, args = params.args, callId = params.callId;
-            if (args.filter(function (item) {
-                return typeof item === "function";
-            }).length > 0 && !['getLocation', 'setWatermark'].includes(action)) {
-                this.timers.push({
-                    callId: callId,
-                    args: args,
-                    timestamp: new Date().getTime(),
-                    handler: setTimeout(function () {
-                        _this.provider.track(__assign({}, getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
-                    }, 20000)
-                });
-            }
+        NativeHook.prototype.handleCall = function () {
+            window._replace_center_.call.apply(this, arguments);
+            console.log("call", arguments);
         };
-        AladdinHook.prototype.callbackListener = function (params) {
-            var callId = params.handlerKey.split("_")[0];
-            var timer = this.timers.filter(function (item) {
-                return item.callId === callId;
-            });
-            if (timer.length > 0)
-                timer = timer[0];
-            clearTimeout(timer.handler);
-            var duration = new Date().getTime() - timer.timestamp;
-            if (duration > 5000) {
-                this.provider.track(__assign({}, getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
-            }
+        NativeHook.prototype.handleCallBack = function () {
+            window._replace_center_.callback.apply(this, arguments);
+            console.log("callback", arguments);
         };
-        AladdinHook.prototype.watch = function (container) {
-            this.aladdin = container || this.aladdin;
-            if (!this.aladdin) {
-                throw Error("AladdinHook can not start watch, has not initlized");
+        NativeHook.prototype.watch = function (nativeBridge) {
+            this.nativeBridge = nativeBridge || this.nativeBridge;
+            if (!this.nativeBridge) {
+                throw Error("NativeHook can not start watch, has not initlized");
             }
-            this.aladdin.on("call", this.callListener.bind(this));
-            this.aladdin.on("callback", this.callbackListener.bind(this));
-            if (process.env.NODE_ENV === 'development') {
-                this.aladdin.on("error", function (error) {
-                    console.log('aladdin event meet error:', JSON.stringify(error));
-                });
-            }
+            replace(this.nativeBridge, "call", this.handleCall.bind(this.nativeBridge));
+            replace(this.nativeBridge, "callback", this.handleCallBack.bind(this.nativeBridge));
         };
-        AladdinHook.prototype.unwatch = function () {
-            this.aladdin.off("call", this.callListener);
-            this.aladdin.off("callback", this.callbackListener);
-            this.timers.forEach(function (timer) {
-                clearTimeout(timer.handler);
-            });
-            this.timers = [];
+        NativeHook.prototype.unwatch = function () {
+            reduction(this.nativeBridge, "call");
+            reduction(this.nativeBridge, "callback");
         };
-        return AladdinHook;
+        return NativeHook;
     }(AbstractHook));
 
     var ErrorHook = /** @class */ (function (_super) {
@@ -12013,11 +11968,12 @@
                         a[o] = arguments[o];
                     return window._replace_center_.onpopstate.apply(this, a);
                 });
+                var referer = location.href;
                 var f = window._replace_center_[e].apply(history, [data, title, url]);
-                if (!url)
+                if (!url || url === referer)
                     return f;
                 try {
-                    var l = location.href.split("#"), h = url.split("#"), p = parseUrl(l[0]), d = parseUrl(h[0]), g = l[1] && l[1].replace(/^\/?(.*)/, "$1"), v = h[1] && h[1].replace(/^\/?(.*)/, "$1");
+                    var l = referer.split("#"), h = url.split("#"), p = parseUrl(l[0]), d = parseUrl(h[0]), g = l[1] && l[1].replace(/^\/?(.*)/, "$1"), v = h[1] && h[1].replace(/^\/?(.*)/, "$1");
                     p !== d ? dispatchCustomEvent("historystatechanged", d) : g !== v && dispatchCustomEvent("historystatechanged", v);
                 }
                 catch (m) {
@@ -12105,7 +12061,7 @@
     var HooksStore = /** @class */ (function () {
         function HooksStore(provider) {
             this.hooks = new Map();
-            this.hooks.set("native", new AladdinHook(provider));
+            this.hooks.set("native", new NativeHook(provider));
             this.hooks.set("error", new ErrorHook(provider));
             this.hooks.set("action", new ActionHook(provider));
             this.hooks.set("uncaught", new UncaughtHook(provider));
@@ -12113,16 +12069,8 @@
             this.hooks.set("performance", new PerformanceHook(provider));
             this.hooks.set("vue", new VueHook(provider));
         }
-        HooksStore.prototype.watch = function (type, container) {
-            var hook = this.hooks.get(type);
-            if (hook)
-                hook.watch(container);
-        };
-        HooksStore.prototype.unwatch = function (type) {
-            var hook = this.hooks.get(type);
-            if (hook) {
-                hook.unwatch();
-            }
+        HooksStore.prototype.getHooks = function () {
+            return this.hooks;
         };
         return HooksStore;
     }());
@@ -12156,6 +12104,17 @@
         };
         MonitorCenter.prototype.getHooks = function () {
             return this.hooks;
+        };
+        MonitorCenter.prototype.watch = function (type, container) {
+            var hook = this.hooks.getHooks().get(type);
+            if (hook)
+                hook.watch(container);
+        };
+        MonitorCenter.prototype.unwatch = function (type) {
+            var hook = this.hooks.getHooks().get(type);
+            if (hook) {
+                hook.unwatch();
+            }
         };
         return MonitorCenter;
     }());
