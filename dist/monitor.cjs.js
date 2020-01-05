@@ -188,7 +188,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.0.18' });
+        v: '1.0.19' });
 }
 function getScreen() {
     return {
@@ -530,7 +530,12 @@ var MonitorConsumer = /** @class */ (function () {
             var data;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.store.shiftMore(storeParams && storeParams.size)];
+                    case 0:
+                        if (!this.abnormalBreaker.canPass()) {
+                            console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, this.store.shiftMore(storeParams && storeParams.size)];
                     case 1:
                         data = _a.sent();
                         if (data) {
@@ -557,10 +562,6 @@ var MonitorConsumer = /** @class */ (function () {
                             data = encodeURIComponent(data);
                             data = pako.gzip(data, { to: "string" });
                             console.log("data length after gzip " + data.length);
-                        }
-                        if (!this.abnormalBreaker.canPass()) {
-                            console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
-                            return [2 /*return*/];
                         }
                         _b.label = 1;
                     case 1:
@@ -1123,5 +1124,4 @@ var MonitorCenter = /** @class */ (function () {
 
 exports.CircuitBreaker = CircuitBreaker;
 exports.MonitorCenter = MonitorCenter;
-exports.MonitorConsumer = MonitorConsumer;
 exports.lifeCycle = lifeCycle;

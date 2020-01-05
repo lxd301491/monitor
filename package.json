@@ -1,6 +1,6 @@
 {
   "name": "jerry-monitor",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "```\r npm install jerry-monitor --save",
   "scripts": {
     "dev": "rollup -c -w",

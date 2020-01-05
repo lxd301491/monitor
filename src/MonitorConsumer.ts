@@ -55,6 +55,10 @@ export class MonitorConsumer {
   start(period: number = 15000, storeParams?: { size?: number, zip?: boolean }) {
     if (this.timer) clearInterval(this.timer);
     this.timer = window.setInterval(async () => {
+      if (!this.abnormalBreaker.canPass()) {
+        console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
+        return;
+      }
       let data = await this.store.shiftMore(storeParams && storeParams.size);
       if (data) {
         this.consume(data, storeParams && storeParams.zip);
@@ -75,10 +79,6 @@ export class MonitorConsumer {
       data = encodeURIComponent(data);
       data = pako.gzip(data, {to: "string"});
       console.log(`data length after gzip ${data.length}`);
-    }
-    if (!this.abnormalBreaker.canPass()) {
-      console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
-      return;
     }
     try {
       switch (this.emitType) {
