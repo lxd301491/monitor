@@ -184,7 +184,7 @@
             // 设备高度像素
             sh: getScreen().h, 
             // 当前版本号
-            v: '1.0.16' });
+            v: '1.0.18' });
     }
     function getScreen() {
         return {
@@ -8696,7 +8696,6 @@
         function MonitorConsumer(api, store, emitType, fetch) {
             if (emitType === void 0) { emitType = "image"; }
             if (fetch === void 0) { fetch = axios$1; }
-            this.frequencyBreaker = new CircuitBreaker("60/60", 5 * 60, "30/60");
             this.abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60");
             if (emitType === "xhr" && !XMLHttpRequest) {
                 throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
@@ -8711,9 +8710,6 @@
         }
         MonitorConsumer.prototype.mountStore = function (store) {
             this.store = store;
-        };
-        MonitorConsumer.prototype.setFrequencyBreaker = function (frequencyBreaker) {
-            this.frequencyBreaker = frequencyBreaker;
         };
         MonitorConsumer.prototype.setAbnormalBreaker = function (abnormalBreaker) {
             this.abnormalBreaker = abnormalBreaker;
@@ -8755,12 +8751,10 @@
                                 data = pako_1.gzip(data, { to: "string" });
                                 console.log("data length after gzip " + data.length);
                             }
-                            if (!this.frequencyBreaker.canPass() || !this.abnormalBreaker.canPass()) {
-                                console.log("frequencyBreaker count", this.frequencyBreaker.getCount(), this.frequencyBreaker.getStateName(), "Duration", this.frequencyBreaker.getDuration());
-                                console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "", this.abnormalBreaker.getDuration());
+                            if (!this.abnormalBreaker.canPass()) {
+                                console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
                                 return [2 /*return*/];
                             }
-                            this.frequencyBreaker.count();
                             _b.label = 1;
                         case 1:
                             _b.trys.push([1, 11, , 12]);
@@ -12101,9 +12095,6 @@
         };
         MonitorCenter.prototype.getConsumer = function () {
             return this.consumer;
-        };
-        MonitorCenter.prototype.getHooks = function () {
-            return this.hooks;
         };
         MonitorCenter.prototype.watch = function (type, container) {
             var hook = this.hooks.getHooks().get(type);

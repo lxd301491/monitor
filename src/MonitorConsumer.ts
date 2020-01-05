@@ -22,11 +22,6 @@ export interface FetchInstance {
 export class MonitorConsumer {
   private store: Store;
   private api: string;
-  private frequencyBreaker: CircuitBreaker = new CircuitBreaker(
-    "60/60",
-    5 * 60,
-    "30/60"
-  );
   private abnormalBreaker: CircuitBreaker = new CircuitBreaker(
     "5/60",
     5 * 60,
@@ -51,10 +46,6 @@ export class MonitorConsumer {
 
   mountStore(store: Store) {
     this.store = store;
-  }
-
-  setFrequencyBreaker(frequencyBreaker: CircuitBreaker) {
-    this.frequencyBreaker = frequencyBreaker;
   }
 
   setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
@@ -85,12 +76,10 @@ export class MonitorConsumer {
       data = pako.gzip(data, {to: "string"});
       console.log(`data length after gzip ${data.length}`);
     }
-    if (!this.frequencyBreaker.canPass() || !this.abnormalBreaker.canPass()) {
-      console.log("frequencyBreaker count", this.frequencyBreaker.getCount(), this.frequencyBreaker.getStateName(), "Duration", this.frequencyBreaker.getDuration());
-      console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "", this.abnormalBreaker.getDuration())
+    if (!this.abnormalBreaker.canPass()) {
+      console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
       return;
     }
-    this.frequencyBreaker.count();
     try {
       switch (this.emitType) {
         case "image": {

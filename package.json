@@ -1,7 +1,7 @@
 {
   "name": "jerry-monitor",
-  "version": "1.0.16",
-  "description": "```\r npm install pa-monitor --save-dev",
+  "version": "1.0.18",
+  "description": "```\r npm install jerry-monitor --save",
   "scripts": {
     "dev": "rollup -c -w",
     "build-rollup": "rollup -c --environment INCLUDE_DEPS,BUILD:production",

@@ -42,10 +42,6 @@ export class MonitorCenter {
     return this.consumer;
   }
 
-  getHooks() {
-    return this.hooks;
-  }
-
   public watch(type: InfoType, container?: any) {
     let hook = this.hooks.getHooks().get(type);
     if (hook) hook.watch(container);
