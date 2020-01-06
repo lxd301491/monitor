@@ -186,7 +186,7 @@
             // 设备高度像素
             sh: getScreen().h, 
             // 当前版本号
-            v: '1.0.20' });
+            v: '1.0.23' });
     }
     function getScreen() {
         return {
@@ -8752,9 +8752,9 @@
                 return __generator(this, function (_b) {
                     switch (_b.label) {
                         case 0:
+                            data = encodeURIComponent(data);
                             if (zip && data.length > infoLenMax) {
                                 console.log("data length before gzip " + data.length);
-                                data = encodeURIComponent(data);
                                 data = pako_1.gzip(data, { to: "string" });
                                 console.log("data length after gzip " + data.length);
                             }

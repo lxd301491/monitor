@@ -74,9 +74,9 @@ export class MonitorConsumer {
   @before
   @after
   private async consume(data: string, zip: boolean = false): Promise<any> {
+    data = encodeURIComponent(data);
     if (zip && data.length > infoLenMax) {
       console.log(`data length before gzip ${data.length}`);
-      data = encodeURIComponent(data);
       data = pako.gzip(data, {to: "string"});
       console.log(`data length after gzip ${data.length}`);
     }
