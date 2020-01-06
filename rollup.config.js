@@ -6,8 +6,14 @@ const rollup = require("rollup");
 const builtins = require("rollup-plugin-node-builtins");
 const replace = require("rollup-plugin-replace");
 const terser = require("rollup-plugin-terser").terser;
+const program = require('commander');
 let pkg = require('./package.json');
 
+program
+  .option("-d, --debug", "launch debug mode")
+  .option("-t, --target <target>", "optional range umd,cjs,ems")
+program.parse(process.argv);
+if (program.debug) console.log(program.opts());
 
 // see below for details on the options
 const inputOptions = {
@@ -87,7 +93,9 @@ const outputOptions = [
 ];
 
 function buildConfigs(inputs, outputs) {
-  return outputs.map(output => {
+  return outputs.filter(output => {
+    return program.target && !program.target.split(",").includes(output.format) ? false : true;
+  }).map(output => {
     let config = {
       input: inputs.input,
       plugins: [...inputs.plugins],
