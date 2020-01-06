@@ -6,12 +6,14 @@ export class PerformanceHook extends AbstractHook {
     setTimeout(() => {
       this.provider.track({
         ...getBasicInfo(),
-        ...perforPage()
+        ...perforPage(),
+        ms: "performance",
+        ml: "info"
       });
     }, 20);
   }
   
-  watch(): void {
+  watch(container?: any): void {
     on("load", this.listener.bind(this));
   }
 

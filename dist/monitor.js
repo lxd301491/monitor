@@ -1,7 +1,7 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
     typeof define === 'function' && define.amd ? define(['exports'], factory) :
-    (global = global || self, factory(global.PAMonitor = {}));
+    (global = global || self, factory(global.Monitor = {}));
 }(this, function (exports) { 'use strict';
 
     /*! *****************************************************************************
@@ -143,20 +143,22 @@
             }
         };
     }
-    function replace(target, methodName, replacer) {
+    function replace(target, methodName, replacer, namespace) {
         if (!window._replace_center_)
             window._replace_center_ = {};
-        if (!window._replace_center_[methodName]) {
-            window._replace_center_[methodName] = target[methodName];
+        var container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
+        if (!container[methodName]) {
+            container[methodName] = target[methodName];
             target[methodName] = replacer;
         }
     }
-    function reduction(target, methodName) {
+    function reduction(target, methodName, namespace) {
         if (!window._replace_center_)
             window._replace_center_ = {};
+        var container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
         if (window._replace_center_[methodName]) {
-            target[methodName] = window._replace_center_[methodName];
-            window._replace_center_[methodName] = undefined;
+            target[methodName] = container[methodName];
+            delete container[methodName];
         }
     }
 
@@ -184,7 +186,7 @@
             // 设备高度像素
             sh: getScreen().h, 
             // 当前版本号
-            v: '1.0.1' });
+            v: '1.0.19' });
     }
     function getScreen() {
         return {
@@ -354,21 +356,31 @@
      * 计数器
      */
     var Counter = /** @class */ (function () {
-        function Counter(num) {
-            if (num === void 0) { num = 0; }
-            this.num = num;
+        function Counter(reserved) {
+            this.nums = [];
+            this.reserved = reserved;
         }
         Counter.prototype.get = function () {
-            return this.num;
+            var _this = this;
+            var now = Date.now();
+            this.nums = this.nums.filter(function (num) {
+                return num > now - _this.reserved * 1000;
+            });
+            return this.nums.length;
         };
         Counter.prototype.increase = function () {
-            this.num++;
+            var _this = this;
+            var now = Date.now();
+            this.nums = this.nums.filter(function (num) {
+                return num > now - _this.reserved * 1000;
+            });
+            this.nums.push(Date.now());
         };
         Counter.prototype.decrease = function () {
-            this.num--;
+            this.nums.shift();
         };
         Counter.prototype.reset = function () {
-            this.num = 0;
+            this.nums = [];
         };
         return Counter;
     }());
@@ -396,18 +408,13 @@
             return breaker.getCount() <= limit;
         };
         HalfOpenState.prototype.checkout = function (breaker) {
-            var period = parseInt(breaker.thresholdForHalfOpen[1]) * 1000;
-            var now = Date.now();
-            if (now >= this.startTime + period) {
-                breaker.reset();
-                if (breaker.getCount() > parseInt(breaker.thresholdForHalfOpen[0])) {
-                    // 依然超过断路阈值, 切到 `OpenState`
-                    breaker.setState(new OpenState());
-                }
-                else {
-                    // 低于断路阈值, 切到 `CloseState`
-                    breaker.setState(new CloseState());
-                }
+            if (breaker.getCount() > parseInt(breaker.thresholdForHalfOpen[0])) {
+                // 依然超过断路阈值, 切到 `OpenState`
+                breaker.setState(new OpenState());
+            }
+            else {
+                // 低于断路阈值, 切到 `CloseState`
+                breaker.setState(new CloseState());
             }
         };
         return HalfOpenState;
@@ -441,16 +448,8 @@
             return true;
         };
         CloseState.prototype.checkout = function (breaker) {
-            var period = parseInt(breaker.thresholdForOpen[1]) * 1000;
-            var now = Date.now();
-            if (now >= this.startTime + period) {
-                // 过了这段校验时间, 清零等待重新开始
-                this.startTime = Date.now();
-                breaker.reset();
-            }
             if (breaker.getCount() >= parseInt(breaker.thresholdForOpen[0])) {
                 // 在这段校验时间内, 超过断路阈值, 切换到 `OpenState`
-                breaker.reset();
                 breaker.setState(new OpenState());
             }
         };
@@ -459,15 +458,19 @@
 
     var CircuitBreaker = /** @class */ (function () {
         function CircuitBreaker(thresholdForOpen, idleTimeForOpen, thresholdForHalfOpen) {
-            if (thresholdForOpen === void 0) { thresholdForOpen = "600/60"; }
+            if (thresholdForOpen === void 0) { thresholdForOpen = "1/60"; }
             if (idleTimeForOpen === void 0) { idleTimeForOpen = 5 * 60; }
-            if (thresholdForHalfOpen === void 0) { thresholdForHalfOpen = "300/60"; }
+            if (thresholdForHalfOpen === void 0) { thresholdForHalfOpen = "1/60"; }
             this.idleTimeForOpen = idleTimeForOpen;
             this.thresholdForOpen = thresholdForOpen.split("/");
             this.thresholdForHalfOpen = thresholdForHalfOpen.split("/");
-            this.counter = new Counter(); // max times for each 60s
+            this.counter = new Counter(Math.max(parseInt(this.thresholdForOpen[1]), parseInt(this.thresholdForHalfOpen[1]))); // max times for each 60s
             this.state = new CloseState(); // default state
         }
+        CircuitBreaker.prototype.getStateName = function () {
+            /^function\s(.*)\(/.exec(this.state.constructor + "");
+            return RegExp.$1;
+        };
         CircuitBreaker.prototype.getState = function () {
             return this.state;
         };
@@ -478,15 +481,18 @@
             this.counter.reset();
         };
         CircuitBreaker.prototype.canPass = function () {
+            this.getState().checkout(this);
             return this.getState().canPass(this);
         };
         CircuitBreaker.prototype.count = function () {
             // 计数器 +1, 同时让 当前的 state 去做条件校验
             this.counter.increase();
-            this.getState().checkout(this);
         };
         CircuitBreaker.prototype.getCount = function () {
             return this.counter.get();
+        };
+        CircuitBreaker.prototype.getDuration = function () {
+            return (Date.now() - this.state.startTime) / 1000;
         };
         return CircuitBreaker;
     }());
@@ -8692,7 +8698,6 @@
         function MonitorConsumer(api, store, emitType, fetch) {
             if (emitType === void 0) { emitType = "image"; }
             if (fetch === void 0) { fetch = axios$1; }
-            this.frequencyBreaker = new CircuitBreaker("60/60", 5 * 60, "30/60");
             this.abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60");
             if (emitType === "xhr" && !XMLHttpRequest) {
                 throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
@@ -8708,23 +8713,24 @@
         MonitorConsumer.prototype.mountStore = function (store) {
             this.store = store;
         };
-        MonitorConsumer.prototype.setFrequencyBreaker = function (frequencyBreaker) {
-            this.frequencyBreaker = frequencyBreaker;
-        };
         MonitorConsumer.prototype.setAbnormalBreaker = function (abnormalBreaker) {
             this.abnormalBreaker = abnormalBreaker;
         };
         MonitorConsumer.prototype.start = function (period, storeParams) {
             var _this = this;
             if (period === void 0) { period = 15000; }
-            if (this.timer) {
-                return;
-            }
+            if (this.timer)
+                clearInterval(this.timer);
             this.timer = window.setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
                 var data;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
-                        case 0: return [4 /*yield*/, this.store.shiftMore(storeParams && storeParams.size)];
+                        case 0:
+                            if (!this.abnormalBreaker.canPass()) {
+                                console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
+                                return [2 /*return*/];
+                            }
+                            return [4 /*yield*/, this.store.shiftMore(storeParams && storeParams.size)];
                         case 1:
                             data = _a.sent();
                             if (data) {
@@ -8752,122 +8758,100 @@
                                 data = pako_1.gzip(data, { to: "string" });
                                 console.log("data length after gzip " + data.length);
                             }
-                            this.frequencyBreaker.count();
                             _b.label = 1;
                         case 1:
-                            _b.trys.push([1, 9, , 10]);
+                            _b.trys.push([1, 11, , 12]);
                             _a = this.emitType;
                             switch (_a) {
                                 case "image": return [3 /*break*/, 2];
                                 case "xhr": return [3 /*break*/, 4];
                                 case "fetch": return [3 /*break*/, 6];
+                                case "beacon": return [3 /*break*/, 8];
                             }
-                            return [3 /*break*/, 8];
+                            return [3 /*break*/, 10];
                         case 2: return [4 /*yield*/, this.imageConsume(data)];
                         case 3:
                             _b.sent();
-                            return [3 /*break*/, 8];
+                            return [3 /*break*/, 10];
                         case 4: return [4 /*yield*/, this.xhrConsume(data)];
                         case 5:
                             _b.sent();
-                            return [3 /*break*/, 8];
+                            return [3 /*break*/, 10];
                         case 6: return [4 /*yield*/, this.fetchConsume(data)];
                         case 7:
                             _b.sent();
-                            return [3 /*break*/, 8];
-                        case 8: return [3 /*break*/, 10];
+                            return [3 /*break*/, 10];
+                        case 8: return [4 /*yield*/, this.beaconConsume(data)];
                         case 9:
+                            _b.sent();
+                            return [3 /*break*/, 10];
+                        case 10: return [3 /*break*/, 12];
+                        case 11:
                             err_1 = _b.sent();
                             this.abnormalBreaker.count();
-                            return [3 /*break*/, 10];
-                        case 10: return [2 /*return*/];
+                            return [3 /*break*/, 12];
+                        case 12: return [2 /*return*/];
                     }
                 });
             });
         };
         MonitorConsumer.prototype.imageConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                var img;
-                var _this = this;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            img = new Image();
-                            return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                    img.onerror = function (err) {
-                                        _this.abnormalBreaker.count();
-                                        reject(err);
-                                    };
-                                    img.onload = function (resp) {
-                                        resolve(resp);
-                                    };
-                                    img.onabort = function (resp) {
-                                        reject(resp);
-                                    };
-                                    img.src = _this.api + "?data=" + data;
-                                })];
-                        case 1: return [2 /*return*/, _a.sent()];
-                    }
-                });
+            var _this = this;
+            var img = new Image();
+            return new Promise(function (resolve, reject) {
+                img.onerror = function (err) {
+                    reject(err);
+                };
+                img.onload = function (resp) {
+                    resolve(resp);
+                };
+                img.onabort = function (resp) {
+                    reject(resp);
+                };
+                img.src = _this.api + "?data=" + data;
             });
         };
         MonitorConsumer.prototype.xhrConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                var xhr;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            xhr = new XMLHttpRequest();
-                            xhr.open("POST", this.api, true);
-                            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                            return [4 /*yield*/, new Promise(function (resolve, reject) {
-                                    xhr.onload = function (resp) {
-                                        resolve(resp);
-                                    };
-                                    xhr.onabort = function (resp) {
-                                        resolve(resp);
-                                    };
-                                    xhr.onerror = function (err) {
-                                        reject(err);
-                                    };
-                                    xhr.onreadystatechange = function () {
-                                        if (xhr.readyState !== 4 || xhr.status !== 200) {
-                                            reject(xhr.readyState);
-                                        }
-                                    };
-                                    xhr.send(JSON.stringify({
-                                        data: data
-                                    }));
-                                })];
-                        case 1: return [2 /*return*/, _a.sent()];
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", this.api, true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            return new Promise(function (resolve, reject) {
+                xhr.onload = function (resp) {
+                    resolve(resp);
+                };
+                xhr.onabort = function (resp) {
+                    resolve(resp);
+                };
+                xhr.onerror = function (err) {
+                    reject(err);
+                };
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState !== 4 || xhr.status !== 200) {
+                        reject(xhr.readyState);
                     }
-                });
+                };
+                xhr.send(JSON.stringify({
+                    data: data
+                }));
             });
         };
         MonitorConsumer.prototype.fetchConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    if (!this.fetch) {
-                        return [2 /*return*/, false];
-                    }
-                    this.fetch.post(this.api, {
-                        data: data
-                    });
-                    return [2 /*return*/];
-                });
+            if (!this.fetch) {
+                return false;
+            }
+            return this.fetch.post(this.api, {
+                data: data
             });
         };
         MonitorConsumer.prototype.beaconConsume = function (data) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
-                        return [2 /*return*/, false];
-                    }
-                    window.navigator.sendBeacon(this.api, JSON.stringify({
-                        data: data
-                    }));
-                    return [2 /*return*/];
-                });
+            var _this = this;
+            if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
+                return false;
+            }
+            return new Promise(function (resolve, reject) {
+                window.navigator.sendBeacon(_this.api, JSON.stringify({
+                    data: data
+                })) ? resolve() : reject();
             });
         };
         __decorate([
@@ -11811,67 +11795,56 @@
         return AbstractHook;
     }());
 
-    var AladdinHook = /** @class */ (function (_super) {
-        __extends(AladdinHook, _super);
-        function AladdinHook() {
+    var NativeHook = /** @class */ (function (_super) {
+        __extends(NativeHook, _super);
+        function NativeHook() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.timers = [];
+            _this.handlers = new Map();
+            _this.timers = new Map();
+            _this.delta = 3;
+            _this.deltaMax = 15;
             return _this;
         }
-        AladdinHook.prototype.initlize = function (options) {
-            this.aladdin = options.aladdin || this.aladdin;
-            return this;
+        NativeHook.prototype.clearCallFlag = function (callFlag) {
+            this.handlers.delete(callFlag);
+            this.timers.delete(callFlag);
         };
-        AladdinHook.prototype.callListener = function (params) {
-            var _this = this;
-            var action = params.action, args = params.args, callId = params.callId;
-            if (args.filter(function (item) {
-                return typeof item === "function";
-            }).length > 0 && !['getLocation', 'setWatermark'].includes(action)) {
-                this.timers.push({
-                    callId: callId,
-                    args: args,
-                    timestamp: new Date().getTime(),
-                    handler: setTimeout(function () {
-                        _this.provider.track(__assign({}, getBasicInfo(), { msg: args[0].url + " timeout 20000+", ms: "native", ml: "crash" }));
-                    }, 20000)
-                });
+        NativeHook.prototype.handleCall = function (component, action, opts, callback) {
+            if (callback) {
+                var callFlag_1 = randomString(15);
+                this.handlers.set(callFlag_1, Date.now());
+                this.timers.set(callFlag_1, setTimeout(function () {
+                    self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take over 15s", ms: 'native', ml: 'warning' }));
+                    self_1.clearCallFlag(callFlag_1);
+                }, this.deltaMax * 1000));
+                var _callback_1 = callback;
+                var self_1 = this;
+                callback = function () {
+                    var delta = Date.now() - (self_1.handlers.get(callFlag_1) || Date.now());
+                    if (delta > self_1.delta * 1000) {
+                        self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take " + delta + "ms", ms: 'native', ml: 'info' }));
+                    }
+                    var timer = self_1.timers.get(callFlag_1);
+                    if (timer) {
+                        clearTimeout(timer);
+                    }
+                    self_1.clearCallFlag(callFlag_1);
+                    _callback_1.apply(self_1, arguments);
+                };
             }
+            window._replace_center_.native.call.apply(this.nativeBridge, [component, action, opts, callback]);
         };
-        AladdinHook.prototype.callbackListener = function (params) {
-            var callId = params.handlerKey.split("_")[0];
-            var timer = this.timers.filter(function (item) {
-                return item.callId === callId;
-            });
-            if (timer.length > 0)
-                timer = timer[0];
-            clearTimeout(timer.handler);
-            var duration = new Date().getTime() - timer.timestamp;
-            if (duration > 5000) {
-                this.provider.track(__assign({}, getBasicInfo(), { msg: timer.args[0].url + " timeout " + duration, ms: "native", ml: "warning" }));
+        NativeHook.prototype.watch = function (nativeBridge) {
+            this.nativeBridge = nativeBridge || this.nativeBridge;
+            if (!this.nativeBridge) {
+                throw Error("NativeHook can not start watch, has not initlized");
             }
+            replace(this.nativeBridge, "call", this.handleCall.bind(this), "native");
         };
-        AladdinHook.prototype.watch = function () {
-            if (!this.aladdin) {
-                throw Error("AladdinHook can not start watch, has not initlized");
-            }
-            this.aladdin.on("call", this.callListener.bind(this));
-            this.aladdin.on("callback", this.callbackListener.bind(this));
-            if (process.env.NODE_ENV === 'development') {
-                this.aladdin.on("error", function (error) {
-                    console.log('aladdin event meet error:', JSON.stringify(error));
-                });
-            }
+        NativeHook.prototype.unwatch = function () {
+            reduction(this.nativeBridge, "call", "native");
         };
-        AladdinHook.prototype.unwatch = function () {
-            this.aladdin.off("call", this.callListener);
-            this.aladdin.off("callback", this.callbackListener);
-            this.timers.forEach(function (timer) {
-                clearTimeout(timer.handler);
-            });
-            this.timers = [];
-        };
-        return AladdinHook;
+        return NativeHook;
     }(AbstractHook));
 
     var ErrorHook = /** @class */ (function (_super) {
@@ -11915,7 +11888,7 @@
                 this.provider.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
             }
         };
-        ErrorHook.prototype.watch = function () {
+        ErrorHook.prototype.watch = function (container) {
             on("error", this.listener.bind(this));
         };
         ErrorHook.prototype.unwatch = function () {
@@ -11949,7 +11922,7 @@
                 this.provider.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
             }
         };
-        ActionHook.prototype.watch = function () {
+        ActionHook.prototype.watch = function (container) {
             var e_1, _a;
             try {
                 for (var actions_1 = __values(actions), actions_1_1 = actions_1.next(); !actions_1_1.done; actions_1_1 = actions_1.next()) {
@@ -11994,7 +11967,7 @@
             evt.preventDefault();
             this.provider.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
         };
-        UncaughtHook.prototype.watch = function () {
+        UncaughtHook.prototype.watch = function (container) {
             on("unhandledrejection", this.listener.bind(this));
         };
         UncaughtHook.prototype.unwatch = function () {
@@ -12016,11 +11989,12 @@
                         a[o] = arguments[o];
                     return window._replace_center_.onpopstate.apply(this, a);
                 });
+                var referer = location.href;
                 var f = window._replace_center_[e].apply(history, [data, title, url]);
-                if (!url)
+                if (!url || url === referer)
                     return f;
                 try {
-                    var l = location.href.split("#"), h = url.split("#"), p = parseUrl(l[0]), d = parseUrl(h[0]), g = l[1] && l[1].replace(/^\/?(.*)/, "$1"), v = h[1] && h[1].replace(/^\/?(.*)/, "$1");
+                    var l = referer.split("#"), h = url.split("#"), p = parseUrl(l[0]), d = parseUrl(h[0]), g = l[1] && l[1].replace(/^\/?(.*)/, "$1"), v = h[1] && h[1].replace(/^\/?(.*)/, "$1");
                     p !== d ? dispatchCustomEvent("historystatechanged", d) : g !== v && dispatchCustomEvent("historystatechanged", v);
                 }
                 catch (m) {
@@ -12041,7 +12015,7 @@
             var page = parseHash(e.detail.toLowerCase());
             pv(this.provider, page);
         };
-        SPARouterHook.prototype.watch = function () {
+        SPARouterHook.prototype.watch = function (container) {
             this.hackState('pushState');
             this.hackState('replaceState');
             on('hashchange', this.handleHashchange.bind(this));
@@ -12064,10 +12038,10 @@
         PerformanceHook.prototype.listener = function (evt) {
             var _this = this;
             setTimeout(function () {
-                _this.provider.track(__assign({}, getBasicInfo(), perforPage()));
+                _this.provider.track(__assign({}, getBasicInfo(), perforPage(), { ms: "performance", ml: "info" }));
             }, 20);
         };
-        PerformanceHook.prototype.watch = function () {
+        PerformanceHook.prototype.watch = function (container) {
             on("load", this.listener.bind(this));
         };
         PerformanceHook.prototype.unwatch = function () {
@@ -12076,30 +12050,48 @@
         return PerformanceHook;
     }(AbstractHook));
 
+    var VueHook = /** @class */ (function (_super) {
+        __extends(VueHook, _super);
+        function VueHook() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
+        VueHook.prototype.watch = function (container) {
+            var _this = this;
+            this.vue = container || this.vue;
+            if (!this.vue) {
+                throw Error("VueHook can not start watch, has not initlized");
+            }
+            this.vue.config.errorHandler = function (err, vm, info) {
+                var comFloor = "";
+                if (vm) {
+                    var cur = vm;
+                    comFloor = vm.$options.name;
+                    while ((cur = cur.$parent)) {
+                        comFloor = vm.$options.name + "=>" + comFloor;
+                    }
+                }
+                _this.provider && _this.provider.track(__assign({}, getBasicInfo(), { msg: err.name + " " + err.message, file: comFloor + " " + info, stack: err.stack, ms: "vue", ml: "error" }));
+            };
+        };
+        VueHook.prototype.unwatch = function () {
+            delete this.vue.config.errorHandler;
+        };
+        return VueHook;
+    }(AbstractHook));
+
     var HooksStore = /** @class */ (function () {
         function HooksStore(provider) {
             this.hooks = new Map();
-            this.hooks.set("native", new AladdinHook(provider).initlize({}));
+            this.hooks.set("native", new NativeHook(provider));
             this.hooks.set("error", new ErrorHook(provider));
             this.hooks.set("action", new ActionHook(provider));
             this.hooks.set("uncaught", new UncaughtHook(provider));
             this.hooks.set("spa", new SPARouterHook(provider));
             this.hooks.set("performance", new PerformanceHook(provider));
+            this.hooks.set("vue", new VueHook(provider));
         }
-        HooksStore.prototype.watch = function (type, options) {
-            var hook = this.hooks.get(type);
-            if (hook) {
-                if (hook instanceof AladdinHook) {
-                    options && hook.initlize(options);
-                }
-                hook.watch();
-            }
-        };
-        HooksStore.prototype.unwatch = function (type) {
-            var hook = this.hooks.get(type);
-            if (hook) {
-                hook.unwatch();
-            }
+        HooksStore.prototype.getHooks = function () {
+            return this.hooks;
         };
         return HooksStore;
     }());
@@ -12131,15 +12123,22 @@
         MonitorCenter.prototype.getConsumer = function () {
             return this.consumer;
         };
-        MonitorCenter.prototype.getHooks = function () {
-            return this.hooks;
+        MonitorCenter.prototype.watch = function (type, container) {
+            var hook = this.hooks.getHooks().get(type);
+            if (hook)
+                hook.watch(container);
+        };
+        MonitorCenter.prototype.unwatch = function (type) {
+            var hook = this.hooks.getHooks().get(type);
+            if (hook) {
+                hook.unwatch();
+            }
         };
         return MonitorCenter;
     }());
 
     exports.CircuitBreaker = CircuitBreaker;
     exports.MonitorCenter = MonitorCenter;
-    exports.MonitorConsumer = MonitorConsumer;
     exports.lifeCycle = lifeCycle;
 
     Object.defineProperty(exports, '__esModule', { value: true });

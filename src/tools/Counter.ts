@@ -2,25 +2,34 @@
  * 计数器
  */
 export class Counter {
-  num: number;
+  nums: number[] = [];
+  reserved: number;
 
-  constructor(num = 0) {
-    this.num = num;
+  constructor(reserved: number) {
+    this.reserved = reserved;
   }
 
   get() {
-    return this.num;
+    let now = Date.now();
+    this.nums = this.nums.filter(num => {
+      return num > now - this.reserved * 1000
+    });
+    return this.nums.length;
   }
 
   increase() {
-    this.num++;
+    let now = Date.now();
+    this.nums = this.nums.filter(num => {
+      return num > now - this.reserved * 1000
+    });
+    this.nums.push(Date.now());
   }
 
   decrease() {
-    this.num--;
+    this.nums.shift();
   }
 
   reset() {
-    this.num = 0;
+    this.nums = [];
   }
 }

@@ -56,7 +56,7 @@ export class ErrorHook extends AbstractHook {
     }
   }
 
-  watch(): void {
+  watch(container?: any): void {
     on("error", this.listener.bind(this));
   }
   unwatch(): void {

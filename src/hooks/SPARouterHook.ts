@@ -10,10 +10,11 @@ export class SPARouterHook extends AbstractHook {
         for (var r = arguments.length, a = new Array(r), o = 0; o < r; o++) a[o] = arguments[o];
         return  window._replace_center_.onpopstate.apply(this, a);
       });
+      let referer = location.href;
       let f =  window._replace_center_[e].apply(history, [data, title, url]);
-      if (!url) return f;
+      if (!url || url === referer) return f;
       try {
-        let l = location.href.split("#"),
+        let l = referer.split("#"),
             h = url.split("#"),
             p = parseUrl(l[0]),
             d = parseUrl(h[0]),
@@ -42,7 +43,7 @@ export class SPARouterHook extends AbstractHook {
     pv(this.provider, page);
   }
   
-  watch(): void {
+  watch(container?: any): void {
     this.hackState('pushState');
     this.hackState('replaceState');
     on('hashchange', this.handleHashchange.bind(this));

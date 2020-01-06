@@ -4,8 +4,8 @@ import { CloseState } from "./CloseState";
 
 export class CircuitBreaker {
   /**
-   * @param thresholdForOpen {string} format: '600/60'
-   * '600/60' for instance, it means maximum allowable request is 600 times per 60 seconds, or the breaker will switch to OpenState
+   * @param thresholdForOpen {string} format: '1/60'
+   * '600/60' for instance, it means maximum allowable request is 1 times per 60 seconds, or the breaker will switch to OpenState
    */
   idleTimeForOpen: number;
 
@@ -16,8 +16,8 @@ export class CircuitBreaker {
   thresholdForOpen: Array<string>;
 
   /**
-   * @param thresholdForHalfOpen {string} format: '300/60'
-   * '300/60' for instance, it means the breaker will switch to OpenState if the maximum number of requests exceeds 300 per 60 seconds,
+   * @param thresholdForHalfOpen {string} format: '1/60'
+   * '300/60' for instance, it means the breaker will switch to OpenState if the maximum number of requests exceeds 1 per 60 seconds,
    * or the breaker switch to CloseState
    */
   thresholdForHalfOpen: Array<string>;
@@ -27,15 +27,20 @@ export class CircuitBreaker {
   state: AbstractState;
 
   constructor(
-    thresholdForOpen = "600/60",
+    thresholdForOpen = "1/60",
     idleTimeForOpen = 5 * 60,
-    thresholdForHalfOpen = "300/60"
+    thresholdForHalfOpen = "1/60"
   ) {
     this.idleTimeForOpen = idleTimeForOpen;
     this.thresholdForOpen = thresholdForOpen.split("/");
     this.thresholdForHalfOpen = thresholdForHalfOpen.split("/");
-    this.counter = new Counter(); // max times for each 60s
+    this.counter = new Counter(Math.max(parseInt(this.thresholdForOpen[1]), parseInt(this.thresholdForHalfOpen[1]))); // max times for each 60s
     this.state = new CloseState(); // default state
+  }
+
+  getStateName(): string {
+    /^function\s(.*)\(/.exec(this.state.constructor + "");
+    return RegExp.$1;
   }
 
   getState(): AbstractState {
@@ -51,16 +56,20 @@ export class CircuitBreaker {
   }
 
   canPass(): boolean {
+    this.getState().checkout(this);
     return this.getState().canPass(this);
   }
 
   count() {
     // 计数器 +1, 同时让 当前的 state 去做条件校验
     this.counter.increase();
-    this.getState().checkout(this);
   }
 
   getCount() {
     return this.counter.get();
+  }
+
+  getDuration() {
+    return (Date.now() - this.state.startTime) / 1000
   }
 }

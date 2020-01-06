@@ -6,7 +6,7 @@ export const actions : any[] = ["click", "input", "blur"];
 
 export type Infos = basicInfo | performanceInfo | envInfo | errorInfo | actionInfo | pvInfo;
 
-export type EmitType = "image" | "fetch" | "xhr" | "custom";
+export type EmitType = "image" | "fetch" | "xhr" | "beacon" | "custom";
 
 export type MsgSource = "unkown" | InfoType | "costom";
 

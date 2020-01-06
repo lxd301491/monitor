@@ -2,19 +2,26 @@ import { CircuitBreaker } from "./tools/CircuitBreaker";
 import { EmitType } from "./typings";
 import { Store } from "./Store";
 import { before, after } from "./decorators/LifeCycle";
-import axios from 'axios';
-import { AxiosInstance} from 'axios';
-import pako from 'pako';
 import { infoLenMax } from "./configs";
+import axios from 'axios';
+import pako from 'pako';
+
+
+export interface FetchResponse<T = any>  {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: any;
+  config: any;
+  request?: any;
+}
+export interface FetchInstance {
+  post<T = any, R = FetchResponse<T>>(url: string, data?: any, config?: any): Promise<R>;
+}
 
 export class MonitorConsumer {
   private store: Store;
   private api: string;
-  private frequencyBreaker: CircuitBreaker = new CircuitBreaker(
-    "60/60",
-    5 * 60,
-    "30/60"
-  );
   private abnormalBreaker: CircuitBreaker = new CircuitBreaker(
     "5/60",
     5 * 60,
@@ -22,9 +29,9 @@ export class MonitorConsumer {
   );
   private emitType: EmitType;
   private timer?: number;
-  private fetch: AxiosInstance; 
+  private fetch: FetchInstance; 
 
-  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: AxiosInstance = axios) {
+  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: FetchInstance = axios) {
     if (emitType === "xhr" && !XMLHttpRequest) {
       throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
     }
@@ -41,19 +48,17 @@ export class MonitorConsumer {
     this.store = store;
   }
 
-  setFrequencyBreaker(frequencyBreaker: CircuitBreaker) {
-    this.frequencyBreaker = frequencyBreaker;
-  }
-
   setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
     this.abnormalBreaker = abnormalBreaker;
   }
 
   start(period: number = 15000, storeParams?: { size?: number, zip?: boolean }) {
-    if (this.timer) {
-      return;
-    }
+    if (this.timer) clearInterval(this.timer);
     this.timer = window.setInterval(async () => {
+      if (!this.abnormalBreaker.canPass()) {
+        console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
+        return;
+      }
       let data = await this.store.shiftMore(storeParams && storeParams.size);
       if (data) {
         this.consume(data, storeParams && storeParams.zip);
@@ -75,7 +80,6 @@ export class MonitorConsumer {
       data = pako.gzip(data, {to: "string"});
       console.log(`data length after gzip ${data.length}`);
     }
-    this.frequencyBreaker.count();
     try {
       switch (this.emitType) {
         case "image": {
@@ -90,17 +94,20 @@ export class MonitorConsumer {
           await this.fetchConsume(data);
           break;
         }
+        case "beacon": {
+          await this.beaconConsume(data);
+          break;
+        }
       }
     } catch (err) {
       this.abnormalBreaker.count();
     }
   }
 
-  private async imageConsume(data: string) {
+  private imageConsume(data: string) {
     let img = new Image();
-    return await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       img.onerror = (err) => {
-        this.abnormalBreaker.count();
         reject(err);
       };
       img.onload = (resp) => {
@@ -113,11 +120,11 @@ export class MonitorConsumer {
     })
   }
 
-  private async xhrConsume(data: string) {
+  private xhrConsume(data: string) {
     let xhr: XMLHttpRequest = new XMLHttpRequest();
     xhr.open("POST", this.api, true);
     xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    return await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       xhr.onload = (resp) => {
         resolve(resp);
       };
@@ -138,21 +145,23 @@ export class MonitorConsumer {
     });
   }
 
-  private async fetchConsume(data: string) {
+  private fetchConsume(data: string) {
     if (!this.fetch) {
       return false;
     }
-    this.fetch.post(this.api, {
+    return this.fetch.post(this.api, {
       data: data
     })
   }
 
-  private async beaconConsume(data: string) {
+  private beaconConsume(data: string) {
     if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
       return false;
     }
-    window.navigator.sendBeacon(this.api, JSON.stringify({
-      data: data
-    }));
+    return new Promise((resolve, reject) => {
+      window.navigator.sendBeacon(this.api, JSON.stringify({
+        data: data
+      })) ? resolve() : reject();
+    })
   }
 }

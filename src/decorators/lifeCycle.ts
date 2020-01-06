@@ -28,18 +28,20 @@ export function after(target: Object, methodName: string, descriptor: PropertyDe
   }
 }
 
-export function replace(target: any, methodName: string, replacer: Function) {
+export function replace(target: any, methodName: string, replacer: Function, namespace?: string) {
   if (!window._replace_center_) window._replace_center_ = {};
-  if (!window._replace_center_[methodName]) {
-    window._replace_center_[methodName] = target[methodName];
+  let container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
+  if (!container[methodName]) {
+    container[methodName] = target[methodName];
     target[methodName] = replacer;
   }
 }
 
-export function reduction(target: any, methodName: string) {
+export function reduction(target: any, methodName: string, namespace?: string) {
   if (!window._replace_center_) window._replace_center_ = {};
+  let container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
   if (window._replace_center_[methodName]) {
-    target[methodName] = window._replace_center_[methodName];
-    window._replace_center_[methodName] = undefined;
+    target[methodName] = container[methodName];
+    delete container[methodName];
   }
 }

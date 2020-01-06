@@ -1,5 +1,3 @@
-const uglify = require("rollup-plugin-uglify").uglify;
-const uglifyEs = require("rollup-plugin-uglify-es");
 const commonjs = require('rollup-plugin-commonjs');
 const nodeResolve = require("rollup-plugin-node-resolve");
 const typescript = require("rollup-plugin-typescript2");
@@ -7,6 +5,7 @@ const typescript = require("rollup-plugin-typescript2");
 const rollup = require("rollup");
 const builtins = require("rollup-plugin-node-builtins");
 const replace = require("rollup-plugin-replace");
+const terser = require("rollup-plugin-terser").terser;
 let pkg = require('./package.json');
 
 
@@ -32,42 +31,58 @@ const inputOptions = {
       rollupCommonJSResolveHack: true
     })
   ],
-  external: [
-    "http",
-    "https",
-    "url",
-    "assert",
-    "stream",
-    "tty",
-    "util",
-    "os",
-    "zlib"
-  ]
+  external: []
 };
 const outputOptions = [
   {
     file: "dist/monitor.js",
     format: "umd",
-    name: "PAMonitor",
-    sourceMap: true //代码映射，方便调试
+    name: "Monitor",
+    sourceMap: true //代码映射，方便调试3
+  },
+  {
+    file: "dist/monitor.min.js",
+    format: "umd",
+    name: "Monitor",
+    uglify: true
   },
   {
     file: "dist/monitor.cjs.js",
-    format: "cjs"
+    format: "cjs",
+    globals: {
+      axios: 'Window.axios',
+      localforage: 'window.localforage',
+      pako: 'Window.pako'
+    }
   },
   {
     file: "dist/monitor.cjs.min.js",
     format: "cjs",
-    uglify: true
+    uglify: true,
+    globals: {
+      axios: 'Window.axios',
+      localforage: 'window.localforage',
+      pako: 'Window.pako'
+    }
   },
   {
     file: "dist/monitor.esm.js",
-    format: "es"
+    format: "es",
+    globals: {
+      axios: 'Window.axios',
+      localforage: 'window.localforage',
+      pako: 'Window.pako'
+    }
   },
   {
     file: "dist/monitor.esm.min.js",
     format: "es",
-    uglify: true
+    uglify: true,
+    globals: {
+      axios: 'Window.axios',
+      localforage: 'window.localforage',
+      pako: 'Window.pako'
+    }
   }
 ];
 
@@ -78,12 +93,16 @@ function buildConfigs(inputs, outputs) {
       plugins: [...inputs.plugins],
       external: [...inputs.external]
     };
+    if (output.globals) {
+      config.external = config.external.concat(Object.keys(output.globals))
+    }
     if (output.uglify === true) {
-      if (output.format === 'es') {
-        config.plugins.push(uglifyEs());
-      } else {
-        config.plugins.push(uglify());
-      }
+      config.plugins.push(terser({
+        compress: {
+          drop_console: true,
+          drop_debugger: true
+        }
+      }))
     }
     config.output = output;
     return config;
