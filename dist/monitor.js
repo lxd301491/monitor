@@ -143,20 +143,22 @@
             }
         };
     }
-    function replace(target, methodName, replacer) {
+    function replace(target, methodName, replacer, namespace) {
         if (!window._replace_center_)
             window._replace_center_ = {};
-        if (!window._replace_center_[methodName]) {
-            window._replace_center_[methodName] = target[methodName];
+        var container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
+        if (!container[methodName]) {
+            container[methodName] = target[methodName];
             target[methodName] = replacer;
         }
     }
-    function reduction(target, methodName) {
+    function reduction(target, methodName, namespace) {
         if (!window._replace_center_)
             window._replace_center_ = {};
+        var container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
         if (window._replace_center_[methodName]) {
-            target[methodName] = window._replace_center_[methodName];
-            window._replace_center_[methodName] = undefined;
+            target[methodName] = container[methodName];
+            delete container[methodName];
         }
     }
 
@@ -11796,27 +11798,51 @@
     var NativeHook = /** @class */ (function (_super) {
         __extends(NativeHook, _super);
         function NativeHook() {
-            return _super !== null && _super.apply(this, arguments) || this;
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.handlers = new Map();
+            _this.timers = new Map();
+            _this.delta = 3;
+            _this.deltaMax = 15;
+            return _this;
         }
-        NativeHook.prototype.handleCall = function () {
-            window._replace_center_.call.apply(this, arguments);
-            console.log("call", arguments);
+        NativeHook.prototype.clearCallFlag = function (callFlag) {
+            this.handlers.delete(callFlag);
+            this.timers.delete(callFlag);
         };
-        NativeHook.prototype.handleCallBack = function () {
-            window._replace_center_.callback.apply(this, arguments);
-            console.log("callback", arguments);
+        NativeHook.prototype.handleCall = function (component, action, opts, callback) {
+            if (callback) {
+                var callFlag_1 = randomString(15);
+                this.handlers.set(callFlag_1, Date.now());
+                this.timers.set(callFlag_1, setTimeout(function () {
+                    self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take over 15s", ms: 'native', ml: 'warning' }));
+                    self_1.clearCallFlag(callFlag_1);
+                }, this.deltaMax * 1000));
+                var _callback_1 = callback;
+                var self_1 = this;
+                callback = function () {
+                    var delta = Date.now() - (self_1.handlers.get(callFlag_1) || Date.now());
+                    if (delta > self_1.delta * 1000) {
+                        self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take " + delta + "ms", ms: 'native', ml: 'info' }));
+                    }
+                    var timer = self_1.timers.get(callFlag_1);
+                    if (timer) {
+                        clearTimeout(timer);
+                    }
+                    self_1.clearCallFlag(callFlag_1);
+                    _callback_1.apply(self_1, arguments);
+                };
+            }
+            window._replace_center_.native.call.apply(this.nativeBridge, [component, action, opts, callback]);
         };
         NativeHook.prototype.watch = function (nativeBridge) {
             this.nativeBridge = nativeBridge || this.nativeBridge;
             if (!this.nativeBridge) {
                 throw Error("NativeHook can not start watch, has not initlized");
             }
-            replace(this.nativeBridge, "call", this.handleCall.bind(this.nativeBridge));
-            replace(this.nativeBridge, "callback", this.handleCallBack.bind(this.nativeBridge));
+            replace(this.nativeBridge, "call", this.handleCall.bind(this), "native");
         };
         NativeHook.prototype.unwatch = function () {
-            reduction(this.nativeBridge, "call");
-            reduction(this.nativeBridge, "callback");
+            reduction(this.nativeBridge, "call", "native");
         };
         return NativeHook;
     }(AbstractHook));
@@ -12012,7 +12038,7 @@
         PerformanceHook.prototype.listener = function (evt) {
             var _this = this;
             setTimeout(function () {
-                _this.provider.track(__assign({}, getBasicInfo(), perforPage()));
+                _this.provider.track(__assign({}, getBasicInfo(), perforPage(), { ms: "performance", ml: "info" }));
             }, 20);
         };
         PerformanceHook.prototype.watch = function (container) {

@@ -1,6 +1,6 @@
 {
   "name": "jerry-monitor",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "```\r npm install jerry-monitor --save",
   "scripts": {
     "dev": "rollup -c -w",
@@ -48,7 +48,8 @@
   "homepage": "https://github.com/lxd301491/monitor#readme",
   "keywords": [
     "monitor",
-    "pa-monitor"
+    "jerry-monitor",
+    "jerry"
   ],
   "main": "dist/monitor.cjs.js",
   "module": "dist/monitor.esm.js",
