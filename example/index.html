@@ -14,21 +14,24 @@
     </div>
   </body>
   <script>
-    PAMonitor.lifeCycle.track.before = function(data) {
-      console.log("track before", event,data);
+    Monitor.lifeCycle.track.before = function(data) {
+      console.log("track before", data);
     }
-    PAMonitor.lifeCycle.consume.before = function(data) {
-      console.log("consume before", event,data);
+    Monitor.lifeCycle.consume.before = function(data) {
+      console.log("consume before", data);
     }
-    var center = new PAMonitor.MonitorCenter("test");
-    center.subscribe("https://www.baidu.com").start(10000, {
+    var center = new Monitor.MonitorCenter("test");
+    center.start({
+      period:10000,
       size: 30,
       zip: true
-    });
-    center.getHooks().watch("error");
-    center.getHooks().watch("uncaught");
-    center.getHooks().watch("action");
-    center.getHooks().watch("performance");
-    center.getHooks().watch("spa");
+    })
+    center.subscribe("https://www.baidu.com", "images");
+    center.subscribe("https://www.youku.com", "xhr");
+    center.watch("error");
+    center.watch("uncaught");
+    center.watch("action");
+    center.watch("performance");
+    center.watch("spa");
   </script>
 </html>

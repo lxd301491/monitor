@@ -190,7 +190,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.0.20' });
+        v: '1.0.26' });
 }
 function getScreen() {
     return {
@@ -502,55 +502,17 @@ var CircuitBreaker = /** @class */ (function () {
 }());
 
 var MonitorConsumer = /** @class */ (function () {
-    function MonitorConsumer(api, store, emitType, fetch) {
+    function MonitorConsumer(api, emitType) {
         if (emitType === void 0) { emitType = "image"; }
-        if (fetch === void 0) { fetch = axios; }
         this.abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60");
-        if (emitType === "xhr" && !XMLHttpRequest) {
-            throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
-        }
-        if (emitType === "fetch" && !fetch) {
-            throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
+        if (emitType === "beacon" && !navigator.sendBeacon) {
+            throw ReferenceError("EmitType is beacon,but navigator.setBeacon is undefined");
         }
         this.api = api;
-        this.store = store;
         this.emitType = emitType;
-        this.fetch = fetch;
     }
-    MonitorConsumer.prototype.mountStore = function (store) {
-        this.store = store;
-    };
     MonitorConsumer.prototype.setAbnormalBreaker = function (abnormalBreaker) {
         this.abnormalBreaker = abnormalBreaker;
-    };
-    MonitorConsumer.prototype.start = function (period, storeParams) {
-        var _this = this;
-        if (period === void 0) { period = 15000; }
-        if (this.timer)
-            clearInterval(this.timer);
-        this.timer = window.setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
-            var data;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        if (!this.abnormalBreaker.canPass()) {
-                            console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
-                            return [2 /*return*/];
-                        }
-                        return [4 /*yield*/, this.store.shiftMore(storeParams && storeParams.size)];
-                    case 1:
-                        data = _a.sent();
-                        if (data) {
-                            this.consume(data, storeParams && storeParams.zip);
-                        }
-                        return [2 /*return*/];
-                }
-            });
-        }); }, period);
-    };
-    MonitorConsumer.prototype.stop = function () {
-        clearInterval(this.timer);
-        this.timer = undefined;
     };
     MonitorConsumer.prototype.consume = function (data, zip) {
         if (zip === void 0) { zip = false; }
@@ -559,6 +521,10 @@ var MonitorConsumer = /** @class */ (function () {
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
+                        if (!this.abnormalBreaker.canPass()) {
+                            console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
+                            return [2 /*return*/];
+                        }
                         if (zip && data.length > infoLenMax) {
                             console.log("data length before gzip " + data.length);
                             data = encodeURIComponent(data);
@@ -567,37 +533,32 @@ var MonitorConsumer = /** @class */ (function () {
                         }
                         _b.label = 1;
                     case 1:
-                        _b.trys.push([1, 11, , 12]);
+                        _b.trys.push([1, 9, , 10]);
                         _a = this.emitType;
                         switch (_a) {
                             case "image": return [3 /*break*/, 2];
-                            case "xhr": return [3 /*break*/, 4];
-                            case "fetch": return [3 /*break*/, 6];
-                            case "beacon": return [3 /*break*/, 8];
+                            case "fetch": return [3 /*break*/, 4];
+                            case "beacon": return [3 /*break*/, 6];
                         }
-                        return [3 /*break*/, 10];
+                        return [3 /*break*/, 8];
                     case 2: return [4 /*yield*/, this.imageConsume(data)];
                     case 3:
                         _b.sent();
-                        return [3 /*break*/, 10];
-                    case 4: return [4 /*yield*/, this.xhrConsume(data)];
+                        return [3 /*break*/, 8];
+                    case 4: return [4 /*yield*/, this.fetchConsume(data)];
                     case 5:
                         _b.sent();
-                        return [3 /*break*/, 10];
-                    case 6: return [4 /*yield*/, this.fetchConsume(data)];
+                        return [3 /*break*/, 8];
+                    case 6: return [4 /*yield*/, this.beaconConsume(data)];
                     case 7:
                         _b.sent();
-                        return [3 /*break*/, 10];
-                    case 8: return [4 /*yield*/, this.beaconConsume(data)];
+                        return [3 /*break*/, 8];
+                    case 8: return [3 /*break*/, 10];
                     case 9:
-                        _b.sent();
-                        return [3 /*break*/, 10];
-                    case 10: return [3 /*break*/, 12];
-                    case 11:
                         err_1 = _b.sent();
                         this.abnormalBreaker.count();
-                        return [3 /*break*/, 12];
-                    case 12: return [2 /*return*/];
+                        return [3 /*break*/, 10];
+                    case 10: return [2 /*return*/];
                 }
             });
         });
@@ -618,35 +579,8 @@ var MonitorConsumer = /** @class */ (function () {
             img.src = _this.api + "?data=" + data;
         });
     };
-    MonitorConsumer.prototype.xhrConsume = function (data) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", this.api, true);
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        return new Promise(function (resolve, reject) {
-            xhr.onload = function (resp) {
-                resolve(resp);
-            };
-            xhr.onabort = function (resp) {
-                resolve(resp);
-            };
-            xhr.onerror = function (err) {
-                reject(err);
-            };
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState !== 4 || xhr.status !== 200) {
-                    reject(xhr.readyState);
-                }
-            };
-            xhr.send(JSON.stringify({
-                data: data
-            }));
-        });
-    };
     MonitorConsumer.prototype.fetchConsume = function (data) {
-        if (!this.fetch) {
-            return false;
-        }
-        return this.fetch.post(this.api, {
+        return axios.post(this.api, {
             data: data
         });
     };
@@ -683,7 +617,7 @@ var Store = /** @class */ (function () {
         });
     };
     Store.prototype.shiftMore = function (size) {
-        if (size === void 0) { size = 0; }
+        if (size === void 0) { size = 15; }
         return __awaiter(this, void 0, void 0, function () {
             var items, len, _a, _b;
             return __generator(this, function (_c) {
@@ -1093,37 +1027,116 @@ var VueHook = /** @class */ (function (_super) {
 var HooksStore = /** @class */ (function () {
     function HooksStore(provider) {
         this.hooks = new Map();
-        this.hooks.set("native", new NativeHook(provider));
-        this.hooks.set("error", new ErrorHook(provider));
-        this.hooks.set("action", new ActionHook(provider));
-        this.hooks.set("uncaught", new UncaughtHook(provider));
-        this.hooks.set("spa", new SPARouterHook(provider));
-        this.hooks.set("performance", new PerformanceHook(provider));
-        this.hooks.set("vue", new VueHook(provider));
+        this.provider = provider;
     }
     HooksStore.prototype.getHooks = function () {
         return this.hooks;
+    };
+    HooksStore.prototype.watch = function (info, container) {
+        var hook = this.hooks.get(info);
+        if (hook) {
+            hook.watch(container);
+            return;
+        }
+        switch (info) {
+            case "native":
+                hook = new NativeHook(this.provider);
+                break;
+            case "error":
+                hook = new ErrorHook(this.provider);
+                break;
+            case "action":
+                hook = new ActionHook(this.provider);
+                break;
+            case "uncaught":
+                hook = new UncaughtHook(this.provider);
+                break;
+            case "spa":
+                hook = new SPARouterHook(this.provider);
+                break;
+            case "performance":
+                hook = new PerformanceHook(this.provider);
+                break;
+            case "vue":
+                hook = new VueHook(this.provider);
+                break;
+            default:
+                hook = undefined;
+                break;
+        }
+        if (hook) {
+            this.hooks.set(info, hook);
+        }
+    };
+    HooksStore.prototype.unwatch = function (info) {
+        var hook = this.hooks.get(info);
+        if (hook) {
+            hook.unwatch();
+            this.hooks.delete(info);
+        }
     };
     return HooksStore;
 }());
 
 var MonitorCenter = /** @class */ (function () {
     function MonitorCenter(appName) {
+        this.consumers = new Map();
         this.store = new Store(appName);
         this.provider = new MonitorProvider(this.store);
         this.hooks = new HooksStore(this.provider);
         pv(this.provider);
     }
+    MonitorCenter.prototype.start = function (options) {
+        var _this = this;
+        if (this.timer)
+            clearInterval(this.timer);
+        this.timer = window.setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
+            var data;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.store.shiftMore(options.size)];
+                    case 1:
+                        data = _a.sent();
+                        if (data) {
+                            this.consumers.forEach(function (consumer, key) {
+                                consumer.consume(data, options.zip);
+                            });
+                        }
+                        return [2 /*return*/];
+                }
+            });
+        }); }, options.period || 15000);
+    };
+    MonitorCenter.prototype.stop = function () {
+        clearInterval(this.timer);
+        this.timer = undefined;
+    };
+    /**
+     * 注册自定义消费者
+     * @param consumer 消费者实例
+     */
+    MonitorCenter.prototype.subscribeCustom = function (consumer) {
+        if (!this.store) {
+            throw new ReferenceError("The init method has not be invoked, please invoke it before this");
+        }
+        var key = randomString(10);
+        this.consumers.set(key, consumer);
+        return key;
+    };
     /**
      * 注册消费者
      * @param consumer 消费者实例
      */
-    MonitorCenter.prototype.subscribe = function (api, emitType, fetch) {
+    MonitorCenter.prototype.subscribe = function (api, emitType) {
         if (!this.store) {
             throw new ReferenceError("The init method has not be invoked, please invoke it before this");
         }
-        this.consumer = new MonitorConsumer(api, this.store, emitType, fetch);
-        return this.consumer;
+        var key = randomString(10);
+        this.consumers.set(key, new MonitorConsumer(api, emitType));
+        return key;
+    };
+    MonitorCenter.prototype.unsubscribe = function (key) {
+        this.consumers.delete(key);
     };
     MonitorCenter.prototype.getStore = function () {
         return this.store;
@@ -1131,19 +1144,11 @@ var MonitorCenter = /** @class */ (function () {
     MonitorCenter.prototype.getProvider = function () {
         return this.provider;
     };
-    MonitorCenter.prototype.getConsumer = function () {
-        return this.consumer;
-    };
     MonitorCenter.prototype.watch = function (type, container) {
-        var hook = this.hooks.getHooks().get(type);
-        if (hook)
-            hook.watch(container);
+        this.hooks.watch(type, container);
     };
     MonitorCenter.prototype.unwatch = function (type) {
-        var hook = this.hooks.getHooks().get(type);
-        if (hook) {
-            hook.unwatch();
-        }
+        this.hooks.unwatch(type);
     };
     return MonitorCenter;
 }());

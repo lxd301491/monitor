@@ -1,6 +1,5 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
 import { EmitType } from "./typings";
-import { Store } from "./Store";
 import { before, after } from "./decorators/LifeCycle";
 import { infoLenMax } from "./configs";
 import axios from 'axios';
@@ -20,7 +19,6 @@ export interface FetchInstance {
 }
 
 export class MonitorConsumer {
-  private store: Store;
   private api: string;
   private abnormalBreaker: CircuitBreaker = new CircuitBreaker(
     "5/60",
@@ -28,52 +26,26 @@ export class MonitorConsumer {
     "0/60"
   );
   private emitType: EmitType;
-  private timer?: number;
-  private fetch: FetchInstance; 
 
-  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: FetchInstance = axios) {
-    if (emitType === "xhr" && !XMLHttpRequest) {
-      throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
-    }
-    if (emitType === "fetch" && !fetch) {
-      throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
+  constructor(api: string, emitType: EmitType = "image") {
+    if (emitType === "beacon" && !navigator.sendBeacon) {
+      throw ReferenceError("EmitType is beacon,but navigator.setBeacon is undefined");
     }
     this.api = api;
-    this.store = store;
     this.emitType = emitType;
-    this.fetch = fetch;
-  }
-
-  mountStore(store: Store) {
-    this.store = store;
   }
 
   setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
     this.abnormalBreaker = abnormalBreaker;
   }
 
-  start(period: number = 15000, storeParams?: { size?: number, zip?: boolean }) {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = window.setInterval(async () => {
-      if (!this.abnormalBreaker.canPass()) {
-        console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
-        return;
-      }
-      let data = await this.store.shiftMore(storeParams && storeParams.size);
-      if (data) {
-        this.consume(data, storeParams && storeParams.zip);
-      }
-    }, period);
-  }
-
-  stop() {
-    clearInterval(this.timer);
-    this.timer = undefined;
-  }
-
   @before
   @after
-  private async consume(data: string, zip: boolean = false): Promise<any> {
+  public async consume(data: string, zip: boolean = false): Promise<any> {
+    if (!this.abnormalBreaker.canPass()) {
+      console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
+      return;
+    }
     if (zip && data.length > infoLenMax) {
       console.log(`data length before gzip ${data.length}`);
       data = encodeURIComponent(data);
@@ -84,10 +56,6 @@ export class MonitorConsumer {
       switch (this.emitType) {
         case "image": {
           await this.imageConsume(data);
-          break;
-        }
-        case "xhr": {
-          await this.xhrConsume(data);
           break;
         }
         case "fetch": {
@@ -120,36 +88,8 @@ export class MonitorConsumer {
     })
   }
 
-  private xhrConsume(data: string) {
-    let xhr: XMLHttpRequest = new XMLHttpRequest();
-    xhr.open("POST", this.api, true);
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    return new Promise((resolve, reject) => {
-      xhr.onload = (resp) => {
-        resolve(resp);
-      };
-      xhr.onabort = (resp) => {
-        resolve(resp);
-      };
-      xhr.onerror = (err) => {
-        reject(err);
-      };
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState !== 4 || xhr.status !== 200) {
-          reject(xhr.readyState);
-        }
-      };
-      xhr.send(JSON.stringify({
-        data: data
-      }));
-    });
-  }
-
   private fetchConsume(data: string) {
-    if (!this.fetch) {
-      return false;
-    }
-    return this.fetch.post(this.api, {
+    return axios.post(this.api, {
       data: data
     })
   }

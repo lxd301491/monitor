@@ -3,13 +3,14 @@ import { MonitorConsumer, FetchInstance } from "./MonitorConsumer";
 import { Store } from "./Store";
 import { EmitType, InfoType } from "./typings";
 import { HooksStore } from "./hooks";
-import { pv } from "./tools";
+import { pv, randomString } from "./tools";
 
 export class MonitorCenter {
   private store: Store;
   private provider: MonitorProvider;
   private hooks: HooksStore;
-  private consumer?: MonitorConsumer;
+  private consumers: Map<String, MonitorConsumer> = new Map();
+  private timer?: number;
   
   constructor (appName: string) {
     this.store = new Store(appName);
@@ -18,16 +19,56 @@ export class MonitorCenter {
     pv(this.provider);
   }
 
+  start(options: {
+    period?: number,
+    size?: number, 
+    zip?: boolean
+  }) {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = window.setInterval(async () => {
+      let data = await this.store.shiftMore(options.size);
+      if (data) {
+        this.consumers.forEach((consumer, key) => {
+          consumer.consume(data, options.zip);
+        })
+      }
+    }, options.period || 15000);
+  }
+
+  stop() {
+    clearInterval(this.timer);
+    this.timer = undefined;
+  }
+
+  /**
+   * 注册自定义消费者
+   * @param consumer 消费者实例
+   */
+  subscribeCustom<T extends MonitorConsumer>(consumer: T): string {
+    if (!this.store) {
+      throw new ReferenceError("The init method has not be invoked, please invoke it before this");
+    }
+    let key: string = randomString(10);
+    this.consumers.set(key, consumer);
+    return key;
+  }
+
   /**
    * 注册消费者
    * @param consumer 消费者实例
    */
-  subscribe(api: string, emitType?: EmitType, fetch?: FetchInstance): MonitorConsumer {
+  subscribe(api: string, emitType?: EmitType): string {
     if (!this.store) {
       throw new ReferenceError("The init method has not be invoked, please invoke it before this");
     }
-    this.consumer = new MonitorConsumer(api, this.store, emitType, fetch);
-    return this.consumer;
+    let key: string = randomString(10);
+    this.consumers.set(key, new MonitorConsumer(api, emitType));
+    return key;
+  }
+
+
+  unsubscribe(key: string) {
+    this.consumers.delete(key);
   }
 
   getStore() {
@@ -38,19 +79,11 @@ export class MonitorCenter {
     return this.provider;
   }
 
-  getConsumer() {
-    return this.consumer;
-  }
-
-  public watch(type: InfoType, container?: any) {
-    let hook = this.hooks.getHooks().get(type);
-    if (hook) hook.watch(container);
+  public watch(type: InfoType, container?: any){
+    this.hooks.watch(type, container);
   }
 
   public unwatch(type: InfoType) {
-    let hook = this.hooks.getHooks().get(type);
-    if (hook) {
-      hook.unwatch();
-    } 
+    this.hooks.unwatch(type);
   }
 }
