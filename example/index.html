@@ -15,23 +15,30 @@
   </body>
   <script>
     Monitor.lifeCycle.track.before = function(data) {
-      console.log("track before", data);
     }
     Monitor.lifeCycle.consume.before = function(data) {
-      console.log("consume before", data);
     }
-    var center = new Monitor.MonitorCenter("test");
+    var center = new Monitor.MonitorCenter("test", true);
     center.start({
-      period:10000,
+      period: 5000,
       size: 30,
       zip: true
     })
     center.subscribe("https://www.baidu.com", "images");
-    center.subscribe("https://www.youku.com", "xhr");
+    function consumer () {
+      
+    }
+    consumer.prototype.consume = async function (data, zip) {
+      console.log(111)
+    }
+    center.subscribeCustom(new consumer());
     center.watch("error");
     center.watch("uncaught");
     center.watch("action");
     center.watch("performance");
     center.watch("spa");
+    center.track({
+      msg: "123123"
+    })
   </script>
 </html>

@@ -1,6 +1,6 @@
-import { expiredays } from "../configs";
 import { basicInfo } from "../typings";
 import { MonitorProvider } from "../MonitorProvider";
+import { globalConfig } from "../configs";
 
 export function getBasicInfo(): basicInfo {
   return {
@@ -87,7 +87,7 @@ export function getUniqueInfo() {
   if (!uni) {
     uni = randomString(10);
     var exdate = new Date();
-    exdate.setDate(exdate.getDate() + expiredays);
+    exdate.setDate(exdate.getDate() + globalConfig.expiredays);
     document.cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
   }
   return {
@@ -226,13 +226,13 @@ export function parseUrl (e: string) {
 
 export function pv(provider: MonitorProvider, page?: string) {
   provider.track({
-    ...getBasicInfo(),
+    page: page ? page : undefined,
     dot: document.title,
     dol: location.href,
     dr: document.referrer,
     dpr: window.devicePixelRatio,
     de: document.charset,
-    page: page ? page : window.location.href,
+    msg: "",
     ms: "pv",
     ml: "info"
   });

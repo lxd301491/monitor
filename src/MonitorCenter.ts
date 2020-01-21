@@ -1,18 +1,20 @@
 import { MonitorProvider } from "./MonitorProvider";
-import { MonitorConsumer, FetchInstance } from "./MonitorConsumer";
+import { MonitorConsumer } from "./MonitorConsumer";
 import { Store } from "./Store";
-import { EmitType, InfoType } from "./typings";
+import { EmitType, InfoType, Infos, IConsumer } from "./typings";
 import { HooksStore } from "./hooks";
 import { pv, randomString } from "./tools";
+import { globalConfig } from "./configs";
 
 export class MonitorCenter {
   private store: Store;
   private provider: MonitorProvider;
   private hooks: HooksStore;
-  private consumers: Map<String, MonitorConsumer> = new Map();
+  private consumers: Map<String, IConsumer> = new Map();
   private timer?: number;
   
-  constructor (appName: string) {
+  constructor (appName: string, debug?: boolean) {
+    globalConfig.debug = debug || false;
     this.store = new Store(appName);
     this.provider = new MonitorProvider(this.store);
     this.hooks = new HooksStore(this.provider);
@@ -44,7 +46,7 @@ export class MonitorCenter {
    * 注册自定义消费者
    * @param consumer 消费者实例
    */
-  subscribeCustom<T extends MonitorConsumer>(consumer: T): string {
+  subscribeCustom<T extends IConsumer>(consumer: T): string {
     if (!this.store) {
       throw new ReferenceError("The init method has not be invoked, please invoke it before this");
     }
@@ -75,8 +77,8 @@ export class MonitorCenter {
     return this.store;
   }
 
-  getProvider() {
-    return this.provider;
+  track (params: Infos) {
+    this.provider.track(params);
   }
 
   public watch(type: InfoType, container?: any){

@@ -1,5 +1,5 @@
 import { AbstractHook } from "./AbstractHook";
-import { on, off, getBasicInfo } from "../tools";
+import { on, off } from "../tools";
 import { actions } from "../typings";
 export class ActionHook extends AbstractHook {
   private getCurrentElement(target: HTMLElement) {
@@ -10,7 +10,6 @@ export class ActionHook extends AbstractHook {
   private listener(evt: UIEvent) {
     if (evt instanceof MouseEvent) {
         this.provider.track({
-          ...getBasicInfo(),
           msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
           ms: "action",
           ml: "info",
@@ -21,7 +20,6 @@ export class ActionHook extends AbstractHook {
         });
     } else if (evt instanceof FocusEvent) {
       this.provider.track({
-        ...getBasicInfo(),
         msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
         ms: "action",
         ml: "info",
@@ -30,7 +28,6 @@ export class ActionHook extends AbstractHook {
       });
     } else if (evt instanceof KeyboardEvent) {
       this.provider.track({
-        ...getBasicInfo(),
         msg: `${evt.type} ${evt.key}`,
         ms: "action",
         ml: "info",
@@ -39,7 +36,6 @@ export class ActionHook extends AbstractHook {
       });
     } else if (evt instanceof InputEvent) {
       this.provider.track({
-        ...getBasicInfo(),
         msg: `${evt.inputType} ${evt.data}`,
         ms: "action",
         ml: "info",

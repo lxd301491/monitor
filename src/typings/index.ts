@@ -4,7 +4,7 @@ export type ActionType = "click" | "input" | "blur";
 
 export const actions : any[] = ["click", "input", "blur"];
 
-export type Infos = basicInfo | performanceInfo | envInfo | errorInfo | actionInfo | pvInfo;
+export type Infos = msgInfo | performanceInfo | envInfo | errorInfo | actionInfo | pvInfo;
 
 export type EmitType = "image" | "fetch" | "beacon";
 
@@ -61,15 +61,22 @@ export interface basicInfo extends networkInfo, msgInfo, envInfo {
   rId: string
 }
 
-export interface pvInfo extends basicInfo {
-  dot: string // document title
-  dol: string // document location
-  dr: string // 来源
-  dpr: number // dpr
-  de: string // document 编码
+export interface pvInfo extends msgInfo {
+  // 当前页面
+  page: string
+  // document title
+  dot: string 
+  // document location
+  dol: string 
+  // 来源
+  dr: string 
+  // dpr
+  dpr: number 
+  // document 编码
+  de: string 
 }
 
-export interface performanceInfo extends basicInfo {
+export interface performanceInfo extends msgInfo {
   // DNS解析时间
   dnst?: number
   // TCP建立时间
@@ -92,7 +99,7 @@ export interface performanceInfo extends basicInfo {
   andt?: number
 }
 
-export interface errorInfo extends basicInfo {
+export interface errorInfo extends msgInfo {
   // 文件名字和路径
   file: string,
   // 错误行号
@@ -103,7 +110,7 @@ export interface errorInfo extends basicInfo {
   stack: string
 }
 
-export interface actionInfo extends basicInfo {
+export interface actionInfo extends msgInfo {
   // 行为类型
   at: string,
   // 元素信息
@@ -116,4 +123,8 @@ export interface actionInfo extends basicInfo {
   x?: number,
   // 鼠标或者手指纵坐标
   y?: number
+}
+
+export interface IConsumer {
+  consume: (data: string, zip?: boolean) => any
 }

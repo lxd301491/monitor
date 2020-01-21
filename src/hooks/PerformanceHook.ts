@@ -1,12 +1,12 @@
 import { AbstractHook } from "./AbstractHook";
-import { perforPage, on, off, getBasicInfo } from "../tools";
+import { perforPage, on, off,  } from "../tools";
 
 export class PerformanceHook extends AbstractHook {
   private listener (evt: Event) {
     setTimeout(() => {
       this.provider.track({
-        ...getBasicInfo(),
         ...perforPage(),
+        msg: "",
         ms: "performance",
         ml: "info"
       });

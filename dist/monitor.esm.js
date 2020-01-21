@@ -160,14 +160,22 @@ function reduction(target, methodName, namespace) {
     }
 }
 
-/**
- * cookie过期时间
- */
-var expiredays = 24 * 60 * 60 * 1000;
-/**
- * 超长消息压缩阈值
- */
-var infoLenMax = 1000;
+var globalConfig;
+(function (globalConfig) {
+    globalConfig.timeout = 20000;
+    /**
+     * cookie过期时间
+     */
+    globalConfig.expiredays = 24 * 60 * 60 * 1000;
+    /**
+     * 超长消息压缩阈值
+     */
+    globalConfig.infoLenMax = 1000;
+    /**
+     * 是否是debug模式，打印必要日志
+     */
+    globalConfig.debug = false;
+})(globalConfig || (globalConfig = {}));
 
 function getBasicInfo() {
     return __assign({}, getUniqueInfo(), getConnection(), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", msg: "", ms: "unkown", ml: "info", 
@@ -184,7 +192,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.0.26' });
+        v: '1.0.27' });
 }
 function getScreen() {
     return {
@@ -224,7 +232,7 @@ function getUniqueInfo() {
     if (!uni) {
         uni = randomString(10);
         var exdate = new Date();
-        exdate.setDate(exdate.getDate() + expiredays);
+        exdate.setDate(exdate.getDate() + globalConfig.expiredays);
         document.cookie = "uni=" + uni + ";domain=" + document.domain + ";path=/;expires=" + exdate.toGMTString();
     }
     return {
@@ -323,7 +331,60 @@ function parseUrl(e) {
     return e.replace(/^(https?:)?\/\//, "").replace(/\?.*$/, "");
 }
 function pv(provider, page) {
-    provider.track(__assign({}, getBasicInfo(), { dot: document.title, dol: location.href, dr: document.referrer, dpr: window.devicePixelRatio, de: document.charset, page: page ? page : window.location.href, ms: "pv", ml: "info" }));
+    provider.track({
+        page: page ? page : undefined,
+        dot: document.title,
+        dol: location.href,
+        dr: document.referrer,
+        dpr: window.devicePixelRatio,
+        de: document.charset,
+        msg: "",
+        ms: "pv",
+        ml: "info"
+    });
+}
+
+function Logger(target, key, value) {
+    /function\s+(.*)\s*\(/.exec(target.constructor.toString());
+    var className = RegExp.$1;
+    /function.*?\((.*)\)/.exec(value.value.toString());
+    var argsName = RegExp.$1.split(",");
+    return {
+        value: function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            var result = value.value.apply(this, args);
+            if (globalConfig.debug) {
+                if (result instanceof Promise) {
+                    result
+                        .then(function (resp) {
+                        console.group(className + " " + key + " success");
+                        console.log("args: " + JSON.stringify(argsName));
+                        console.log("argsValue: " + JSON.stringify(args));
+                        console.log("result: " + JSON.stringify(resp));
+                        console.groupEnd();
+                    })
+                        .catch(function (err) {
+                        console.group(className + " " + key + " failed");
+                        console.log("args: " + JSON.stringify(argsName));
+                        console.log("argsValue: " + JSON.stringify(args));
+                        console.log("result: " + JSON.stringify(err));
+                        console.groupEnd();
+                    });
+                }
+                else {
+                    console.group(className + " " + key + " success");
+                    console.log("args: " + JSON.stringify(argsName));
+                    console.log("argsValue: " + JSON.stringify(args));
+                    console.log("result: " + JSON.stringify(result));
+                    console.groupEnd();
+                }
+            }
+            return result;
+        }
+    };
 }
 
 var MonitorProvider = /** @class */ (function () {
@@ -336,7 +397,7 @@ var MonitorProvider = /** @class */ (function () {
     MonitorProvider.prototype.track = function (params) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
-                params = __assign({}, params, getConnection());
+                params = __assign({}, getBasicInfo(), params);
                 if (this.store)
                     this.store.push(params);
                 return [2 /*return*/, this];
@@ -345,7 +406,8 @@ var MonitorProvider = /** @class */ (function () {
     };
     __decorate([
         before,
-        after
+        after,
+        Logger
     ], MonitorProvider.prototype, "track", null);
     return MonitorProvider;
 }());
@@ -519,7 +581,7 @@ var MonitorConsumer = /** @class */ (function () {
                             console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
                             return [2 /*return*/];
                         }
-                        if (zip && data.length > infoLenMax) {
+                        if (zip && data.length > globalConfig.infoLenMax) {
                             console.log("data length before gzip " + data.length);
                             data = encodeURIComponent(data);
                             data = pako.gzip(data, { to: "string" });
@@ -591,7 +653,8 @@ var MonitorConsumer = /** @class */ (function () {
     };
     __decorate([
         before,
-        after
+        after,
+        Logger
     ], MonitorConsumer.prototype, "consume", null);
     return MonitorConsumer;
 }());
@@ -753,7 +816,11 @@ var NativeHook = /** @class */ (function (_super) {
             var callFlag_1 = randomString(15);
             this.handlers.set(callFlag_1, Date.now());
             this.timers.set(callFlag_1, setTimeout(function () {
-                self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take over 15s", ms: 'native', ml: 'warning' }));
+                self_1.provider.track({
+                    msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take over 15s",
+                    ms: 'native',
+                    ml: 'warning'
+                });
                 self_1.clearCallFlag(callFlag_1);
             }, this.deltaMax * 1000));
             var _callback_1 = callback;
@@ -761,7 +828,11 @@ var NativeHook = /** @class */ (function (_super) {
             callback = function () {
                 var delta = Date.now() - (self_1.handlers.get(callFlag_1) || Date.now());
                 if (delta > self_1.delta * 1000) {
-                    self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take " + delta + "ms", ms: 'native', ml: 'info' }));
+                    self_1.provider.track({
+                        msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take " + delta + "ms",
+                        ms: 'native',
+                        ml: 'info'
+                    });
                 }
                 var timer = self_1.timers.get(callFlag_1);
                 if (timer) {
@@ -800,7 +871,15 @@ var ErrorHook = /** @class */ (function (_super) {
             var src = evt.target instanceof HTMLImageElement ||
                 evt.target instanceof HTMLScriptElement ? evt.target.src :
                 evt.target instanceof HTMLLinkElement ? evt.target.href : "";
-            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
+            this.provider.track({
+                msg: evt.target.outerHTML,
+                file: src,
+                stack: evt.target.localName.toUpperCase(),
+                line: 0,
+                col: 0,
+                ms: "error",
+                ml: "error"
+            });
         }
         else {
             var stack = "";
@@ -824,7 +903,15 @@ var ErrorHook = /** @class */ (function (_super) {
                 }
                 stack = ext.join(",");
             }
-            this.provider.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
+            this.provider.track({
+                file: evt.filename,
+                line: evt.lineno,
+                col: evt.colno,
+                stack: stack,
+                msg: evt.message,
+                ms: "error",
+                ml: "error"
+            });
         }
     };
     ErrorHook.prototype.watch = function (container) {
@@ -849,16 +936,42 @@ var ActionHook = /** @class */ (function (_super) {
     };
     ActionHook.prototype.listener = function (evt) {
         if (evt instanceof MouseEvent) {
-            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
+            this.provider.track({
+                msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
+                x: evt.x,
+                y: evt.y
+            });
         }
         else if (evt instanceof FocusEvent) {
-            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
+            this.provider.track({
+                msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
+            });
         }
         else if (evt instanceof KeyboardEvent) {
-            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
+            this.provider.track({
+                msg: evt.type + " " + evt.key,
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                key: evt.key
+            });
         }
         else if (evt instanceof InputEvent) {
-            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
+            this.provider.track({
+                msg: evt.inputType + " " + evt.data,
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                key: evt.data || ""
+            });
         }
     };
     ActionHook.prototype.watch = function (container) {
@@ -904,7 +1017,11 @@ var UncaughtHook = /** @class */ (function (_super) {
     UncaughtHook.prototype.listener = function (evt) {
         evt.stopPropagation();
         evt.preventDefault();
-        this.provider.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
+        this.provider.track({
+            msg: evt.reason,
+            ms: "uncaught",
+            ml: "error"
+        });
     };
     UncaughtHook.prototype.watch = function (container) {
         on("unhandledrejection", this.listener.bind(this));
@@ -977,7 +1094,7 @@ var PerformanceHook = /** @class */ (function (_super) {
     PerformanceHook.prototype.listener = function (evt) {
         var _this = this;
         setTimeout(function () {
-            _this.provider.track(__assign({}, getBasicInfo(), perforPage(), { ms: "performance", ml: "info" }));
+            _this.provider.track(__assign({}, perforPage(), { msg: "", ms: "performance", ml: "info" }));
         }, 20);
     };
     PerformanceHook.prototype.watch = function (container) {
@@ -1009,7 +1126,13 @@ var VueHook = /** @class */ (function (_super) {
                     comFloor = vm.$options.name + "=>" + comFloor;
                 }
             }
-            _this.provider && _this.provider.track(__assign({}, getBasicInfo(), { msg: err.name + " " + err.message, file: comFloor + " " + info, stack: err.stack, ms: "vue", ml: "error" }));
+            _this.provider && _this.provider.track({
+                msg: err.name + " " + err.message,
+                file: comFloor + " " + info,
+                stack: err.stack,
+                ms: "vue",
+                ml: "error"
+            });
         };
     };
     VueHook.prototype.unwatch = function () {
@@ -1073,8 +1196,9 @@ var HooksStore = /** @class */ (function () {
 }());
 
 var MonitorCenter = /** @class */ (function () {
-    function MonitorCenter(appName) {
+    function MonitorCenter(appName, debug) {
         this.consumers = new Map();
+        globalConfig.debug = debug || false;
         this.store = new Store(appName);
         this.provider = new MonitorProvider(this.store);
         this.hooks = new HooksStore(this.provider);
@@ -1135,8 +1259,8 @@ var MonitorCenter = /** @class */ (function () {
     MonitorCenter.prototype.getStore = function () {
         return this.store;
     };
-    MonitorCenter.prototype.getProvider = function () {
-        return this.provider;
+    MonitorCenter.prototype.track = function (params) {
+        this.provider.track(params);
     };
     MonitorCenter.prototype.watch = function (type, container) {
         this.hooks.watch(type, container);

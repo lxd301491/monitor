@@ -1,9 +1,10 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
-import { EmitType } from "./typings";
+import { EmitType, IConsumer } from "./typings";
 import { before, after } from "./decorators/LifeCycle";
-import { infoLenMax } from "./configs";
 import axios from 'axios';
 import pako from 'pako';
+import { globalConfig } from "./configs";
+import { Logger } from "./decorators/Logger";
 
 
 export interface FetchResponse<T = any>  {
@@ -18,7 +19,7 @@ export interface FetchInstance {
   post<T = any, R = FetchResponse<T>>(url: string, data?: any, config?: any): Promise<R>;
 }
 
-export class MonitorConsumer {
+export class MonitorConsumer implements IConsumer {
   private api: string;
   private abnormalBreaker: CircuitBreaker = new CircuitBreaker(
     "5/60",
@@ -41,12 +42,13 @@ export class MonitorConsumer {
 
   @before
   @after
+  @Logger
   public async consume(data: string, zip: boolean = false): Promise<any> {
     if (!this.abnormalBreaker.canPass()) {
       console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
       return;
     }
-    if (zip && data.length > infoLenMax) {
+    if (zip && data.length > globalConfig.infoLenMax) {
       console.log(`data length before gzip ${data.length}`);
       data = encodeURIComponent(data);
       data = pako.gzip(data, {to: "string"});

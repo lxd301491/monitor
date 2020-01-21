@@ -48,3 +48,7 @@ declare var InputEvent: {
 interface WindowEventMap {
   "historystatechanged": CustomEvent
 }
+
+declare interface IConsumer {
+  consume: (data: string, zip?: boolean) => any
+}

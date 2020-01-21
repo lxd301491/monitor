@@ -7,6 +7,7 @@
  * localization 本地化对象，必须实现getItem和setItem方法
  */
 import localForage from 'localforage';
+import { Logger } from './decorators/Logger';
 
 export class Store {
   private appName: string;

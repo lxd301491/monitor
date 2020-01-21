@@ -1,6 +1,6 @@
 import { AbstractHook } from "./AbstractHook";
 import { replace, reduction } from "../decorators/LifeCycle";
-import { randomString, getBasicInfo, getConnection } from "../tools";
+import { randomString } from "../tools";
 export class NativeHook extends AbstractHook {
   private nativeBridge: any;
   private handlers: Map<string, number> = new Map();
@@ -19,8 +19,6 @@ export class NativeHook extends AbstractHook {
       this.handlers.set(callFlag, Date.now());
       this.timers.set(callFlag, setTimeout(function() {
         self.provider.track({
-          ...getBasicInfo(),
-          ...getConnection(),
           msg: `${component}.${action} args ${JSON.stringify(opts)}, callback take over 15s`,
           ms: 'native',
           ml: 'warning'
@@ -33,8 +31,6 @@ export class NativeHook extends AbstractHook {
         let delta = Date.now() - (self.handlers.get(callFlag) || Date.now());
         if (delta > self.delta * 1000) {
           self.provider.track({
-            ...getBasicInfo(),
-            ...getConnection(),
             msg: `${component}.${action} args ${JSON.stringify(opts)}, callback take ${delta}ms`,
             ms: 'native',
             ml: 'info'

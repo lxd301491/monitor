@@ -1,5 +1,4 @@
 import { AbstractHook } from "./AbstractHook";
-import { getBasicInfo } from "../tools";
 
 export class VueHook extends AbstractHook {
   private vue: any;
@@ -19,7 +18,6 @@ export class VueHook extends AbstractHook {
         }
       }
       this.provider && this.provider.track({
-        ...getBasicInfo(),
         msg: `${err.name} ${err.message}`,
         file: `${comFloor} ${info}`,
         stack: err.stack,
