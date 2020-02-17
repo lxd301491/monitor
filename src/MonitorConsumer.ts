@@ -1,23 +1,9 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
 import { EmitType } from "./typings";
-import { Store } from "./Store";
 import { before, after } from "./decorators/LifeCycle";
 import { infoLenMax } from "./configs";
 import axios from 'axios';
 import pako from 'pako';
-
-
-export interface FetchResponse<T = any>  {
-  data: T;
-  status: number;
-  statusText: string;
-  headers: any;
-  config: any;
-  request?: any;
-}
-export interface FetchInstance {
-  post<T = any, R = FetchResponse<T>>(url: string, data?: any, config?: any): Promise<R>;
-}
 
 export class MonitorConsumer {
   private api: string;
@@ -27,20 +13,17 @@ export class MonitorConsumer {
     "0/60"
   );
   private emitType: EmitType;
-  private fetch: FetchInstance; 
+  private func?: (data: string) => Promise<any>;
   private zip: boolean;
 
-  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: FetchInstance = axios, zip: boolean = true) {
-    if (emitType === "xhr" && !XMLHttpRequest) {
-      throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
-    }
-    if (emitType === "fetch" && !fetch) {
-      throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
+  constructor(api: string, zip: boolean = true, emitType: EmitType = "image", func?: (data: string) => Promise<any>){
+    if (emitType === "custom" && !func) {
+      throw Error("When using custom mode, the custom function cannot be empty!");
     }
     this.api = api;
     this.emitType = emitType;
-    this.fetch = fetch;
     this.zip = zip;
+    this.func = func;
   }
 
   public setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
@@ -66,10 +49,6 @@ export class MonitorConsumer {
           await this.imageConsume(data);
           break;
         }
-        case "xhr": {
-          await this.xhrConsume(data);
-          break;
-        }
         case "fetch": {
           await this.fetchConsume(data);
           break;
@@ -78,6 +57,9 @@ export class MonitorConsumer {
           await this.beaconConsume(data);
           break;
         }
+        case "custom": {
+          this.func && await this.func(data);
+        }
       }
     } catch (err) {
       this.abnormalBreaker.count();
@@ -85,7 +67,7 @@ export class MonitorConsumer {
   }
 
   private imageConsume(data: string) {
-    let img = new Image();
+    let img = new Image(1, 1);
     return new Promise((resolve, reject) => {
       img.onerror = (err) => {
         reject(err);
@@ -99,36 +81,14 @@ export class MonitorConsumer {
       img.src = this.api + "?data=" + data;
     })
   }
-
-  private xhrConsume(data: string) {
-    let xhr: XMLHttpRequest = new XMLHttpRequest();
-    xhr.open("POST", this.api, true);
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    return new Promise((resolve, reject) => {
-      xhr.onload = (resp) => {
-        resolve(resp);
-      };
-      xhr.onabort = (resp) => {
-        resolve(resp);
-      };
-      xhr.onerror = (err) => {
-        reject(err);
-      };
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState !== 4 || xhr.status !== 200) {
-          reject(xhr.readyState);
-        }
-      };
-      xhr.send("data=" + data);
-    });
-  }
-
+  
   private fetchConsume(data: string) {
-    if (!this.fetch) {
-      return false;
-    }
-    return this.fetch.post(this.api, {
+    return axios.post(this.api, {
       data: data
+    }, {
+      headers: {
+        'Content-Type':'application/x-www-form-urlencoded'
+      }
     })
   }
 

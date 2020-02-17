@@ -17,7 +17,6 @@ export class HooksFactory {
       if (r.value === key) {
         throw TypeError(`the hook type "${key}" already exists！`);
       }
-      console.log(r.value);
     }
     this.hooks.set(key, hook);
     return this;

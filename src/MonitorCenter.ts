@@ -1,5 +1,5 @@
 import { MonitorProvider } from "./MonitorProvider";
-import { MonitorConsumer, FetchInstance } from "./MonitorConsumer";
+import { MonitorConsumer } from "./MonitorConsumer";
 import { Store } from "./Store";
 import { EmitType } from "./typings";
 import { pv } from "./tools";
@@ -37,11 +37,8 @@ export class MonitorCenter {
    * 注册消费者
    * @param consumer 消费者实例
    */
-  subscribe(api: string, emitType?: EmitType, fetch?: FetchInstance, zip?: boolean): MonitorConsumer {
-    if (!this.store) {
-      throw new ReferenceError("The init method has not be invoked, please invoke it before this");
-    }
-    this.consumers.push(new MonitorConsumer(api, this.store, emitType, fetch, zip));
+  subscribe(api: string, zip?: boolean, emitType?: EmitType, func?: (data: string) => Promise<any>): MonitorConsumer {
+    this.consumers.push(new MonitorConsumer(api, zip, emitType, func));
     return this.consumers[this.consumers.length - 1];
   }
 

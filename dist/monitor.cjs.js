@@ -198,7 +198,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.1.0' });
+        v: '1.1.1' });
 }
 function getScreen() {
     return {
@@ -510,30 +510,26 @@ var CircuitBreaker = /** @class */ (function () {
 }());
 
 var MonitorConsumer = /** @class */ (function () {
-    function MonitorConsumer(api, store, emitType, fetch, zip) {
-        if (emitType === void 0) { emitType = "image"; }
-        if (fetch === void 0) { fetch = axios; }
+    function MonitorConsumer(api, zip, emitType, func) {
         if (zip === void 0) { zip = true; }
+        if (emitType === void 0) { emitType = "image"; }
         this.abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60");
-        if (emitType === "xhr" && !XMLHttpRequest) {
-            throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
-        }
-        if (emitType === "fetch" && !fetch) {
-            throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
+        if (emitType === "custom" && !func) {
+            throw Error("When using custom mode, the custom function cannot be empty!");
         }
         this.api = api;
         this.emitType = emitType;
-        this.fetch = fetch;
         this.zip = zip;
+        this.func = func;
     }
     MonitorConsumer.prototype.setAbnormalBreaker = function (abnormalBreaker) {
         this.abnormalBreaker = abnormalBreaker;
     };
     MonitorConsumer.prototype.consume = function (data) {
         return __awaiter(this, void 0, void 0, function () {
-            var _a, err_1;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var _a, _b, err_1;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0:
                         if (!this.abnormalBreaker.canPass()) {
                             console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
@@ -545,46 +541,51 @@ var MonitorConsumer = /** @class */ (function () {
                             data = pako.gzip(data, { to: "string" });
                             console.log("data length after gzip " + data.length);
                         }
-                        _b.label = 1;
+                        _c.label = 1;
                     case 1:
-                        _b.trys.push([1, 11, , 12]);
+                        _c.trys.push([1, 12, , 13]);
                         _a = this.emitType;
                         switch (_a) {
                             case "image": return [3 /*break*/, 2];
-                            case "xhr": return [3 /*break*/, 4];
-                            case "fetch": return [3 /*break*/, 6];
-                            case "beacon": return [3 /*break*/, 8];
+                            case "fetch": return [3 /*break*/, 4];
+                            case "beacon": return [3 /*break*/, 6];
+                            case "custom": return [3 /*break*/, 8];
                         }
-                        return [3 /*break*/, 10];
+                        return [3 /*break*/, 11];
                     case 2: return [4 /*yield*/, this.imageConsume(data)];
                     case 3:
-                        _b.sent();
-                        return [3 /*break*/, 10];
-                    case 4: return [4 /*yield*/, this.xhrConsume(data)];
+                        _c.sent();
+                        return [3 /*break*/, 11];
+                    case 4: return [4 /*yield*/, this.fetchConsume(data)];
                     case 5:
-                        _b.sent();
-                        return [3 /*break*/, 10];
-                    case 6: return [4 /*yield*/, this.fetchConsume(data)];
+                        _c.sent();
+                        return [3 /*break*/, 11];
+                    case 6: return [4 /*yield*/, this.beaconConsume(data)];
                     case 7:
-                        _b.sent();
-                        return [3 /*break*/, 10];
-                    case 8: return [4 /*yield*/, this.beaconConsume(data)];
+                        _c.sent();
+                        return [3 /*break*/, 11];
+                    case 8:
+                        _b = this.func;
+                        if (!_b) return [3 /*break*/, 10];
+                        return [4 /*yield*/, this.func(data)];
                     case 9:
-                        _b.sent();
-                        return [3 /*break*/, 10];
-                    case 10: return [3 /*break*/, 12];
-                    case 11:
-                        err_1 = _b.sent();
+                        _b = (_c.sent());
+                        _c.label = 10;
+                    case 10:
+                        _c.label = 11;
+                    case 11: return [3 /*break*/, 13];
+                    case 12:
+                        err_1 = _c.sent();
                         this.abnormalBreaker.count();
-                        return [3 /*break*/, 12];
-                    case 12: return [2 /*return*/];
+                        return [3 /*break*/, 13];
+                    case 13: return [2 /*return*/];
                 }
             });
         });
     };
     MonitorConsumer.prototype.imageConsume = function (data) {
         var _this = this;
-        var img = new Image();
+        var img = new Image(1, 1);
         return new Promise(function (resolve, reject) {
             img.onerror = function (err) {
                 reject(err);
@@ -598,34 +599,13 @@ var MonitorConsumer = /** @class */ (function () {
             img.src = _this.api + "?data=" + data;
         });
     };
-    MonitorConsumer.prototype.xhrConsume = function (data) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", this.api, true);
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        return new Promise(function (resolve, reject) {
-            xhr.onload = function (resp) {
-                resolve(resp);
-            };
-            xhr.onabort = function (resp) {
-                resolve(resp);
-            };
-            xhr.onerror = function (err) {
-                reject(err);
-            };
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState !== 4 || xhr.status !== 200) {
-                    reject(xhr.readyState);
-                }
-            };
-            xhr.send("data=" + data);
-        });
-    };
     MonitorConsumer.prototype.fetchConsume = function (data) {
-        if (!this.fetch) {
-            return false;
-        }
-        return this.fetch.post(this.api, {
+        return axios.post(this.api, {
             data: data
+        }, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
     };
     MonitorConsumer.prototype.beaconConsume = function (data) {
@@ -998,7 +978,6 @@ var HooksFactory = /** @class */ (function () {
             if (r.value === key) {
                 throw TypeError("the hook type \"" + key + "\" already exists\uFF01");
             }
-            console.log(r.value);
         }
         this.hooks.set(key, hook);
         return this;
@@ -1066,11 +1045,8 @@ var MonitorCenter = /** @class */ (function () {
      * 注册消费者
      * @param consumer 消费者实例
      */
-    MonitorCenter.prototype.subscribe = function (api, emitType, fetch, zip) {
-        if (!this.store) {
-            throw new ReferenceError("The init method has not be invoked, please invoke it before this");
-        }
-        this.consumers.push(new MonitorConsumer(api, this.store, emitType, fetch, zip));
+    MonitorCenter.prototype.subscribe = function (api, zip, emitType, func) {
+        this.consumers.push(new MonitorConsumer(api, zip, emitType, func));
         return this.consumers[this.consumers.length - 1];
     };
     MonitorCenter.prototype.getStore = function () {
