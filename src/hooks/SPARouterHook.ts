@@ -43,7 +43,7 @@ export class SPARouterHook extends AbstractHook {
     pv(this.provider, page);
   }
   
-  watch(container?: any): void {
+  watch(): void {
     this.hackState('pushState');
     this.hackState('replaceState');
     on('hashchange', this.handleHashchange.bind(this));

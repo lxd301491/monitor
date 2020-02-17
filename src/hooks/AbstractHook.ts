@@ -7,7 +7,7 @@ export abstract class AbstractHook {
     this.provider = provider;
   }
   
-  abstract watch(container?: any): void;
+  abstract watch(): void;
 
   abstract unwatch(): void;
 }

@@ -1,6 +1,6 @@
 {
   "name": "jerry-monitor",
-  "version": "1.0.23",
+  "version": "1.1.0",
   "description": "```\r npm install jerry-monitor --save",
   "scripts": {
     "dev": "rollup -c -w",
@@ -9,7 +9,7 @@
     "build-umd": "node rollup.config.js -t umd",
     "build-cjs": "node rollup.config.js -t cjs",
     "build-esm": "node rollup.config.js -t es",
-    "publish": "npm run build && npm publish"
+    "ppublish": "npm run build && npm publish"
   },
   "author": "lxd",
   "license": "ISC",
@@ -29,7 +29,7 @@
     "rollup-plugin-typescript2": "^0.21.2",
     "ts-lint": "^4.5.1",
     "tslint": "^5.18.0",
-    "typescript": "^3.5.3",
+    "typescript": "^3.7.5",
     "vue": "^2.6.11"
   },
   "directories": {

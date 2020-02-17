@@ -13,7 +13,7 @@ export class UncaughtHook extends AbstractHook {
     });
   }
 
-  watch(container?: any): void {
+  watch(): void {
     on("unhandledrejection", this.listener.bind(this));
   }
   

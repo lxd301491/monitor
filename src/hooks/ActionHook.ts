@@ -49,7 +49,7 @@ export class ActionHook extends AbstractHook {
     }
   }
 
-  watch(container?: any): void {
+  watch(): void {
     for (let action of actions) {
       on(action, this.listener.bind(this));
     }

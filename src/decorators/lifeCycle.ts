@@ -29,8 +29,12 @@ export function after(target: Object, methodName: string, descriptor: PropertyDe
 }
 
 export function replace(target: any, methodName: string, replacer: Function, namespace?: string) {
-  if (!window._replace_center_) window._replace_center_ = {};
-  let container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
+  let top: any = window || global || undefined;
+  if (!top) {
+    throw new ReferenceError("the top object is not exist");
+  } 
+  if (!top._replace_center_) top._replace_center_ = {};
+  let container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
   if (!container[methodName]) {
     container[methodName] = target[methodName];
     target[methodName] = replacer;
@@ -38,9 +42,13 @@ export function replace(target: any, methodName: string, replacer: Function, nam
 }
 
 export function reduction(target: any, methodName: string, namespace?: string) {
-  if (!window._replace_center_) window._replace_center_ = {};
-  let container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
-  if (window._replace_center_[methodName]) {
+  let top: any = window || global || undefined;
+  if (!top) {
+    throw new ReferenceError("the top object is not exist");
+  } 
+  if (!top._replace_center_) top._replace_center_ = {};
+  let container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
+  if (top._replace_center_[methodName]) {
     target[methodName] = container[methodName];
     delete container[methodName];
   }

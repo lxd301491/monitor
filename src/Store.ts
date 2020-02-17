@@ -27,7 +27,7 @@ export class Store {
     });
   }
 
-  async shiftMore(size: number = 0): Promise<string> {
+  async shiftMore(size: number = 10): Promise<string> {
     let items : Array<any> | string = [];
     let len = await this.length();
     len = size > len ? len : size;

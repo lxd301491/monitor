@@ -20,7 +20,6 @@ export interface FetchInstance {
 }
 
 export class MonitorConsumer {
-  private store: Store;
   private api: string;
   private abnormalBreaker: CircuitBreaker = new CircuitBreaker(
     "5/60",
@@ -28,10 +27,10 @@ export class MonitorConsumer {
     "0/60"
   );
   private emitType: EmitType;
-  private timer?: number;
   private fetch: FetchInstance; 
+  private zip: boolean;
 
-  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: FetchInstance = axios) {
+  constructor(api: string, store: Store, emitType: EmitType = "image", fetch: FetchInstance = axios, zip: boolean = true) {
     if (emitType === "xhr" && !XMLHttpRequest) {
       throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
     }
@@ -39,43 +38,24 @@ export class MonitorConsumer {
       throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
     }
     this.api = api;
-    this.store = store;
     this.emitType = emitType;
     this.fetch = fetch;
+    this.zip = zip;
   }
 
-  mountStore(store: Store) {
-    this.store = store;
-  }
-
-  setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
+  public setAbnormalBreaker (abnormalBreaker: CircuitBreaker) {
     this.abnormalBreaker = abnormalBreaker;
-  }
-
-  start(period: number = 15000, storeParams?: { size?: number, zip?: boolean }) {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = window.setInterval(async () => {
-      if (!this.abnormalBreaker.canPass()) {
-        console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
-        return;
-      }
-      let data = await this.store.shiftMore(storeParams && storeParams.size);
-      if (data) {
-        this.consume(data, storeParams && storeParams.zip);
-      }
-    }, period);
-  }
-
-  stop() {
-    clearInterval(this.timer);
-    this.timer = undefined;
   }
 
   @before
   @after
-  private async consume(data: string, zip: boolean = false): Promise<any> {
+  public async consume(data: string): Promise<any> {
+    if (!this.abnormalBreaker.canPass()) {
+      console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
+      return;
+    }
     data = encodeURIComponent(data);
-    if (zip && data.length > infoLenMax) {
+    if (this.zip && data.length > infoLenMax) {
       console.log(`data length before gzip ${data.length}`);
       data = pako.gzip(data, {to: "string"});
       console.log(`data length after gzip ${data.length}`);
@@ -139,9 +119,7 @@ export class MonitorConsumer {
           reject(xhr.readyState);
         }
       };
-      xhr.send(JSON.stringify({
-        data: data
-      }));
+      xhr.send("data=" + data);
     });
   }
 

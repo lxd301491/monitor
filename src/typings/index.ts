@@ -1,14 +1,8 @@
-export type InfoType = "native" | "error" | "action" | "uncaught" | "spa" | "performance" | "vue" | "pv";
-
-export type ActionType = "click" | "input" | "blur";
-
 export const actions : any[] = ["click", "input", "blur"];
 
 export type Infos = basicInfo | performanceInfo | envInfo | errorInfo | actionInfo | pvInfo;
 
 export type EmitType = "image" | "fetch" | "xhr" | "beacon" | "custom";
-
-export type MsgSource = "unkown" | InfoType | "costom";
 
 export type MsgLevel = "info" | "warning" | "error" | "crash";
 
@@ -16,7 +10,7 @@ export interface msgInfo {
    // 消息说明
    msg: string
    // 消息源
-   ms: MsgSource
+   ms: string
    // 消息等级
    ml: MsgLevel
 }

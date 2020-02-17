@@ -144,19 +144,27 @@
         };
     }
     function replace(target, methodName, replacer, namespace) {
-        if (!window._replace_center_)
-            window._replace_center_ = {};
-        var container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
+        var top = window || global || undefined;
+        if (!top) {
+            throw new ReferenceError("the top object is not exist");
+        }
+        if (!top._replace_center_)
+            top._replace_center_ = {};
+        var container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
         if (!container[methodName]) {
             container[methodName] = target[methodName];
             target[methodName] = replacer;
         }
     }
     function reduction(target, methodName, namespace) {
-        if (!window._replace_center_)
-            window._replace_center_ = {};
-        var container = namespace ? window._replace_center_[namespace] ? window._replace_center_[namespace] : window._replace_center_[namespace] = {} : window._replace_center_;
-        if (window._replace_center_[methodName]) {
+        var top = window || global || undefined;
+        if (!top) {
+            throw new ReferenceError("the top object is not exist");
+        }
+        if (!top._replace_center_)
+            top._replace_center_ = {};
+        var container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
+        if (top._replace_center_[methodName]) {
             target[methodName] = container[methodName];
             delete container[methodName];
         }
@@ -172,7 +180,7 @@
     var infoLenMax = 1000;
 
     function getBasicInfo() {
-        return __assign({}, getUniqueInfo(), getConnection(), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", msg: "", ms: "unkown", ml: "info", 
+        return __assign(__assign(__assign({}, getUniqueInfo()), getConnection()), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", msg: "", ms: "unkown", ml: "info", 
             // 设备号
             dId: getCookie("deviceId") || "", 
             // 设备类型
@@ -186,7 +194,7 @@
             // 设备高度像素
             sh: getScreen().h, 
             // 当前版本号
-            v: '1.0.23' });
+            v: '1.1.0' });
     }
     function getScreen() {
         return {
@@ -325,7 +333,7 @@
         return e.replace(/^(https?:)?\/\//, "").replace(/\?.*$/, "");
     }
     function pv(provider, page) {
-        provider.track(__assign({}, getBasicInfo(), { dot: document.title, dol: location.href, dr: document.referrer, dpr: window.devicePixelRatio, de: document.charset, page: page ? page : window.location.href, ms: "pv", ml: "info" }));
+        provider.track(__assign(__assign({}, getBasicInfo()), { dot: document.title, dol: location.href, dr: document.referrer, dpr: window.devicePixelRatio, de: document.charset, page: page ? page : window.location.href, ms: "pv", ml: "info" }));
     }
 
     var MonitorProvider = /** @class */ (function () {
@@ -338,7 +346,7 @@
         MonitorProvider.prototype.track = function (params) {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
-                    params = __assign({}, params, getConnection());
+                    params = __assign(__assign({}, params), getConnection());
                     if (this.store)
                         this.store.push(params);
                     return [2 /*return*/, this];
@@ -8695,9 +8703,10 @@
     var pako_1 = pako;
 
     var MonitorConsumer = /** @class */ (function () {
-        function MonitorConsumer(api, store, emitType, fetch) {
+        function MonitorConsumer(api, store, emitType, fetch, zip) {
             if (emitType === void 0) { emitType = "image"; }
             if (fetch === void 0) { fetch = axios$1; }
+            if (zip === void 0) { zip = true; }
             this.abnormalBreaker = new CircuitBreaker("5/60", 5 * 60, "0/60");
             if (emitType === "xhr" && !XMLHttpRequest) {
                 throw ReferenceError("EmitType is XHR,but XMLHttpRequest is undefined");
@@ -8706,54 +8715,25 @@
                 throw ReferenceError("EmitType is FETCH,but fetch object is undefined");
             }
             this.api = api;
-            this.store = store;
             this.emitType = emitType;
             this.fetch = fetch;
+            this.zip = zip;
         }
-        MonitorConsumer.prototype.mountStore = function (store) {
-            this.store = store;
-        };
         MonitorConsumer.prototype.setAbnormalBreaker = function (abnormalBreaker) {
             this.abnormalBreaker = abnormalBreaker;
         };
-        MonitorConsumer.prototype.start = function (period, storeParams) {
-            var _this = this;
-            if (period === void 0) { period = 15000; }
-            if (this.timer)
-                clearInterval(this.timer);
-            this.timer = window.setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
-                var data;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (!this.abnormalBreaker.canPass()) {
-                                console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
-                                return [2 /*return*/];
-                            }
-                            return [4 /*yield*/, this.store.shiftMore(storeParams && storeParams.size)];
-                        case 1:
-                            data = _a.sent();
-                            if (data) {
-                                this.consume(data, storeParams && storeParams.zip);
-                            }
-                            return [2 /*return*/];
-                    }
-                });
-            }); }, period);
-        };
-        MonitorConsumer.prototype.stop = function () {
-            clearInterval(this.timer);
-            this.timer = undefined;
-        };
-        MonitorConsumer.prototype.consume = function (data, zip) {
-            if (zip === void 0) { zip = false; }
+        MonitorConsumer.prototype.consume = function (data) {
             return __awaiter(this, void 0, void 0, function () {
                 var _a, err_1;
                 return __generator(this, function (_b) {
                     switch (_b.label) {
                         case 0:
+                            if (!this.abnormalBreaker.canPass()) {
+                                console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
+                                return [2 /*return*/];
+                            }
                             data = encodeURIComponent(data);
-                            if (zip && data.length > infoLenMax) {
+                            if (this.zip && data.length > infoLenMax) {
                                 console.log("data length before gzip " + data.length);
                                 data = pako_1.gzip(data, { to: "string" });
                                 console.log("data length after gzip " + data.length);
@@ -8830,9 +8810,7 @@
                         reject(xhr.readyState);
                     }
                 };
-                xhr.send(JSON.stringify({
-                    data: data
-                }));
+                xhr.send("data=" + data);
             });
         };
         MonitorConsumer.prototype.fetchConsume = function (data) {
@@ -11672,7 +11650,7 @@
             });
         };
         Store.prototype.shiftMore = function (size) {
-            if (size === void 0) { size = 0; }
+            if (size === void 0) { size = 10; }
             return __awaiter(this, void 0, void 0, function () {
                 var items, len, _a, _b;
                 return __generator(this, function (_c) {
@@ -11795,58 +11773,6 @@
         return AbstractHook;
     }());
 
-    var NativeHook = /** @class */ (function (_super) {
-        __extends(NativeHook, _super);
-        function NativeHook() {
-            var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.handlers = new Map();
-            _this.timers = new Map();
-            _this.delta = 3;
-            _this.deltaMax = 15;
-            return _this;
-        }
-        NativeHook.prototype.clearCallFlag = function (callFlag) {
-            this.handlers.delete(callFlag);
-            this.timers.delete(callFlag);
-        };
-        NativeHook.prototype.handleCall = function (component, action, opts, callback) {
-            if (callback) {
-                var callFlag_1 = randomString(15);
-                this.handlers.set(callFlag_1, Date.now());
-                this.timers.set(callFlag_1, setTimeout(function () {
-                    self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take over 15s", ms: 'native', ml: 'warning' }));
-                    self_1.clearCallFlag(callFlag_1);
-                }, this.deltaMax * 1000));
-                var _callback_1 = callback;
-                var self_1 = this;
-                callback = function () {
-                    var delta = Date.now() - (self_1.handlers.get(callFlag_1) || Date.now());
-                    if (delta > self_1.delta * 1000) {
-                        self_1.provider.track(__assign({}, getBasicInfo(), getConnection(), { msg: component + "." + action + " args " + JSON.stringify(opts) + ", callback take " + delta + "ms", ms: 'native', ml: 'info' }));
-                    }
-                    var timer = self_1.timers.get(callFlag_1);
-                    if (timer) {
-                        clearTimeout(timer);
-                    }
-                    self_1.clearCallFlag(callFlag_1);
-                    _callback_1.apply(self_1, arguments);
-                };
-            }
-            window._replace_center_.native.call.apply(this.nativeBridge, [component, action, opts, callback]);
-        };
-        NativeHook.prototype.watch = function (nativeBridge) {
-            this.nativeBridge = nativeBridge || this.nativeBridge;
-            if (!this.nativeBridge) {
-                throw Error("NativeHook can not start watch, has not initlized");
-            }
-            replace(this.nativeBridge, "call", this.handleCall.bind(this), "native");
-        };
-        NativeHook.prototype.unwatch = function () {
-            reduction(this.nativeBridge, "call", "native");
-        };
-        return NativeHook;
-    }(AbstractHook));
-
     var ErrorHook = /** @class */ (function (_super) {
         __extends(ErrorHook, _super);
         function ErrorHook() {
@@ -11861,7 +11787,7 @@
                 var src = evt.target instanceof HTMLImageElement ||
                     evt.target instanceof HTMLScriptElement ? evt.target.src :
                     evt.target instanceof HTMLLinkElement ? evt.target.href : "";
-                this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
+                this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
             }
             else {
                 var stack = "";
@@ -11885,10 +11811,10 @@
                     }
                     stack = ext.join(",");
                 }
-                this.provider.track(__assign({}, getBasicInfo(), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
+                this.provider.track(__assign(__assign({}, getBasicInfo()), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
             }
         };
-        ErrorHook.prototype.watch = function (container) {
+        ErrorHook.prototype.watch = function () {
             on("error", this.listener.bind(this));
         };
         ErrorHook.prototype.unwatch = function () {
@@ -11910,19 +11836,19 @@
         };
         ActionHook.prototype.listener = function (evt) {
             if (evt instanceof MouseEvent) {
-                this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
+                this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
             }
             else if (evt instanceof FocusEvent) {
-                this.provider.track(__assign({}, getBasicInfo(), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
+                this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
             }
             else if (evt instanceof KeyboardEvent) {
-                this.provider.track(__assign({}, getBasicInfo(), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
+                this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
             }
             else if (evt instanceof InputEvent) {
-                this.provider.track(__assign({}, getBasicInfo(), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
+                this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
             }
         };
-        ActionHook.prototype.watch = function (container) {
+        ActionHook.prototype.watch = function () {
             var e_1, _a;
             try {
                 for (var actions_1 = __values(actions), actions_1_1 = actions_1.next(); !actions_1_1.done; actions_1_1 = actions_1.next()) {
@@ -11965,9 +11891,9 @@
         UncaughtHook.prototype.listener = function (evt) {
             evt.stopPropagation();
             evt.preventDefault();
-            this.provider.track(__assign({}, getBasicInfo(), { msg: evt.reason, ms: "uncaught", ml: "error" }));
+            this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.reason, ms: "uncaught", ml: "error" }));
         };
-        UncaughtHook.prototype.watch = function (container) {
+        UncaughtHook.prototype.watch = function () {
             on("unhandledrejection", this.listener.bind(this));
         };
         UncaughtHook.prototype.unwatch = function () {
@@ -12015,7 +11941,7 @@
             var page = parseHash(e.detail.toLowerCase());
             pv(this.provider, page);
         };
-        SPARouterHook.prototype.watch = function (container) {
+        SPARouterHook.prototype.watch = function () {
             this.hackState('pushState');
             this.hackState('replaceState');
             on('hashchange', this.handleHashchange.bind(this));
@@ -12038,10 +11964,10 @@
         PerformanceHook.prototype.listener = function (evt) {
             var _this = this;
             setTimeout(function () {
-                _this.provider.track(__assign({}, getBasicInfo(), perforPage(), { ms: "performance", ml: "info" }));
+                _this.provider.track(__assign(__assign(__assign({}, getBasicInfo()), perforPage()), { ms: "performance", ml: "info" }));
             }, 20);
         };
-        PerformanceHook.prototype.watch = function (container) {
+        PerformanceHook.prototype.watch = function () {
             on("load", this.listener.bind(this));
         };
         PerformanceHook.prototype.unwatch = function () {
@@ -12050,89 +11976,97 @@
         return PerformanceHook;
     }(AbstractHook));
 
-    var VueHook = /** @class */ (function (_super) {
-        __extends(VueHook, _super);
-        function VueHook() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
-        VueHook.prototype.watch = function (container) {
-            var _this = this;
-            this.vue = container || this.vue;
-            if (!this.vue) {
-                throw Error("VueHook can not start watch, has not initlized");
-            }
-            this.vue.config.errorHandler = function (err, vm, info) {
-                var comFloor = "";
-                if (vm) {
-                    var cur = vm;
-                    comFloor = vm.$options.name;
-                    while ((cur = cur.$parent)) {
-                        comFloor = vm.$options.name + "=>" + comFloor;
-                    }
-                }
-                _this.provider && _this.provider.track(__assign({}, getBasicInfo(), { msg: err.name + " " + err.message, file: comFloor + " " + info, stack: err.stack, ms: "vue", ml: "error" }));
-            };
-        };
-        VueHook.prototype.unwatch = function () {
-            delete this.vue.config.errorHandler;
-        };
-        return VueHook;
-    }(AbstractHook));
-
-    var HooksStore = /** @class */ (function () {
-        function HooksStore(provider) {
+    var HooksFactory = /** @class */ (function () {
+        function HooksFactory() {
             this.hooks = new Map();
-            this.hooks.set("native", new NativeHook(provider));
-            this.hooks.set("error", new ErrorHook(provider));
-            this.hooks.set("action", new ActionHook(provider));
-            this.hooks.set("uncaught", new UncaughtHook(provider));
-            this.hooks.set("spa", new SPARouterHook(provider));
-            this.hooks.set("performance", new PerformanceHook(provider));
-            this.hooks.set("vue", new VueHook(provider));
         }
-        HooksStore.prototype.getHooks = function () {
-            return this.hooks;
+        HooksFactory.prototype.reigster = function (key, hook) {
+            var it = this.hooks.keys();
+            var r;
+            while (r = it.next(), !r.done) {
+                if (r.value === key) {
+                    throw TypeError("the hook type \"" + key + "\" already exists\uFF01");
+                }
+                console.log(r.value);
+            }
+            this.hooks.set(key, hook);
+            return this;
         };
-        return HooksStore;
+        HooksFactory.prototype.watch = function (key) {
+            var _a;
+            if (!this.hooks.has(key)) {
+                throw TypeError("hook type \"" + key + "\" does not exist, please register first\uFF01");
+            }
+            (_a = this.hooks.get(key)) === null || _a === void 0 ? void 0 : _a.watch();
+            return this;
+        };
+        HooksFactory.prototype.unwatch = function (key) {
+            var _a;
+            if (!this.hooks.has(key)) {
+                throw TypeError("hook type \"" + key + "\" does not exist, please register first\uFF01");
+            }
+            (_a = this.hooks.get(key)) === null || _a === void 0 ? void 0 : _a.unwatch();
+            return this;
+        };
+        HooksFactory.prototype.initlize = function (provider) {
+            this.reigster("error", new ErrorHook(provider));
+            this.reigster("uncaught", new UncaughtHook(provider));
+            this.reigster("action", new ActionHook(provider));
+            this.reigster("spa", new SPARouterHook(provider));
+            this.reigster("performance", new PerformanceHook(provider));
+            return this;
+        };
+        return HooksFactory;
     }());
 
     var MonitorCenter = /** @class */ (function () {
         function MonitorCenter(appName) {
+            this.consumers = [];
             this.store = new Store(appName);
             this.provider = new MonitorProvider(this.store);
-            this.hooks = new HooksStore(this.provider);
+            this.hooks = new HooksFactory().initlize(this.provider);
             pv(this.provider);
         }
+        MonitorCenter.prototype.start = function (period, size) {
+            var _this = this;
+            if (period === void 0) { period = 15000; }
+            if (this.timer)
+                clearInterval(this.timer);
+            this.timer = window.setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
+                var data;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.store.shiftMore(size)];
+                        case 1:
+                            data = _a.sent();
+                            this.consumers.forEach(function (consumer) {
+                                consumer.consume(data);
+                            });
+                            return [2 /*return*/];
+                    }
+                });
+            }); }, period);
+        };
+        MonitorCenter.prototype.stop = function () {
+            clearInterval(this.timer);
+            this.timer = undefined;
+        };
         /**
          * 注册消费者
          * @param consumer 消费者实例
          */
-        MonitorCenter.prototype.subscribe = function (api, emitType, fetch) {
+        MonitorCenter.prototype.subscribe = function (api, emitType, fetch, zip) {
             if (!this.store) {
                 throw new ReferenceError("The init method has not be invoked, please invoke it before this");
             }
-            this.consumer = new MonitorConsumer(api, this.store, emitType, fetch);
-            return this.consumer;
+            this.consumers.push(new MonitorConsumer(api, this.store, emitType, fetch, zip));
+            return this.consumers[this.consumers.length - 1];
         };
         MonitorCenter.prototype.getStore = function () {
             return this.store;
         };
         MonitorCenter.prototype.getProvider = function () {
             return this.provider;
-        };
-        MonitorCenter.prototype.getConsumer = function () {
-            return this.consumer;
-        };
-        MonitorCenter.prototype.watch = function (type, container) {
-            var hook = this.hooks.getHooks().get(type);
-            if (hook)
-                hook.watch(container);
-        };
-        MonitorCenter.prototype.unwatch = function (type) {
-            var hook = this.hooks.getHooks().get(type);
-            if (hook) {
-                hook.unwatch();
-            }
         };
         return MonitorCenter;
     }());
