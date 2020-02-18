@@ -3,7 +3,9 @@ import { EmitType } from "./typings";
 import { before, after } from "./decorators/LifeCycle";
 import { infoLenMax } from "./configs";
 import axios from 'axios';
+import qs from 'qs';
 import pako from 'pako';
+
 
 export class MonitorConsumer {
   private api: string;
@@ -83,9 +85,9 @@ export class MonitorConsumer {
   }
   
   private fetchConsume(data: string) {
-    return axios.post(this.api, {
+    return axios.post(this.api, qs.stringify({
       data: data
-    }, {
+    }), {
       headers: {
         'Content-Type':'application/x-www-form-urlencoded'
       }
