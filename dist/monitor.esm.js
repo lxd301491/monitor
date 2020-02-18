@@ -192,7 +192,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.1.2' });
+        v: '1.1.3' });
 }
 function getScreen() {
     return {
@@ -1810,7 +1810,7 @@ var MonitorCenter = /** @class */ (function () {
                     case 0: return [4 /*yield*/, this.store.shiftMore(size)];
                     case 1:
                         data = _a.sent();
-                        this.consumers.forEach(function (consumer) {
+                        data && this.consumers.forEach(function (consumer) {
                             consumer.consume(data);
                         });
                         return [2 /*return*/];

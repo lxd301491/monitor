@@ -23,7 +23,7 @@ export class MonitorCenter {
     if (this.timer) clearInterval(this.timer);
     this.timer = window.setInterval(async () => {
       let data = await this.store.shiftMore(size);
-      this.consumers.forEach(consumer => {
+      data && this.consumers.forEach(consumer => {
         consumer.consume(data);
       })
     }, period);
