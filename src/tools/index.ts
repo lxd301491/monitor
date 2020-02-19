@@ -9,9 +9,6 @@ export function getBasicInfo(): basicInfo {
     page: window.location.href,
     uId: getCookie("uId") || "",
     rId: getCookie("rId") || "",
-    msg: "",
-    ms: "unkown",
-    ml: "info",
     // 设备号
     dId: getCookie("deviceId") || "",
     // 设备类型
@@ -226,13 +223,13 @@ export function parseUrl (e: string) {
 
 export function pv(provider: MonitorProvider, page?: string) {
   provider.track({
-    ...getBasicInfo(),
     dot: document.title,
     dol: location.href,
     dr: document.referrer,
     dpr: window.devicePixelRatio,
     de: document.charset,
     page: page ? page : window.location.href,
+    msg: "",
     ms: "pv",
     ml: "info"
   });

@@ -1,5 +1,5 @@
 import { AbstractHook } from "./AbstractHook";
-import { on, off, getBasicInfo } from "../tools";
+import { on, off } from "../tools";
 
 export class ErrorHook extends AbstractHook {
   private listener (evt: ErrorEvent) {
@@ -13,7 +13,6 @@ export class ErrorHook extends AbstractHook {
       evt.target instanceof HTMLScriptElement ? evt.target.src :
       evt.target instanceof HTMLLinkElement ?  evt.target.href : "";
       this.provider.track({
-        ...getBasicInfo(),
         msg: evt.target.outerHTML,
         file: src,
         stack: evt.target.localName.toUpperCase(),
@@ -44,7 +43,6 @@ export class ErrorHook extends AbstractHook {
         stack = ext.join(",");
       }
       this.provider.track({
-        ...getBasicInfo(),
         file: evt.filename,
         line: evt.lineno,
         col: evt.colno,

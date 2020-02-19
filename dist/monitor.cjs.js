@@ -184,7 +184,7 @@ var expiredays = 24 * 60 * 60 * 1000;
 var infoLenMax = 1000;
 
 function getBasicInfo() {
-    return __assign(__assign(__assign({}, getUniqueInfo()), getConnection()), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", msg: "", ms: "unkown", ml: "info", 
+    return __assign(__assign(__assign({}, getUniqueInfo()), getConnection()), { page: window.location.href, uId: getCookie("uId") || "", rId: getCookie("rId") || "", 
         // 设备号
         dId: getCookie("deviceId") || "", 
         // 设备类型
@@ -198,7 +198,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.1.9' });
+        v: '1.1.10' });
 }
 function getScreen() {
     return {
@@ -337,7 +337,17 @@ function parseUrl(e) {
     return e.replace(/^(https?:)?\/\//, "").replace(/\?.*$/, "");
 }
 function pv(provider, page) {
-    provider.track(__assign(__assign({}, getBasicInfo()), { dot: document.title, dol: location.href, dr: document.referrer, dpr: window.devicePixelRatio, de: document.charset, page: page ? page : window.location.href, ms: "pv", ml: "info" }));
+    provider.track({
+        dot: document.title,
+        dol: location.href,
+        dr: document.referrer,
+        dpr: window.devicePixelRatio,
+        de: document.charset,
+        page: page ? page : window.location.href,
+        msg: "",
+        ms: "pv",
+        ml: "info"
+    });
 }
 
 var MonitorProvider = /** @class */ (function () {
@@ -350,7 +360,7 @@ var MonitorProvider = /** @class */ (function () {
     MonitorProvider.prototype.track = function (params) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
-                params = __assign(__assign({}, params), getConnection());
+                params = __assign(__assign(__assign({}, getBasicInfo()), getConnection()), params);
                 if (this.store)
                     this.store.push(params);
                 return [2 /*return*/, this];
@@ -1575,7 +1585,15 @@ var ErrorHook = /** @class */ (function (_super) {
             var src = evt.target instanceof HTMLImageElement ||
                 evt.target instanceof HTMLScriptElement ? evt.target.src :
                 evt.target instanceof HTMLLinkElement ? evt.target.href : "";
-            this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.target.outerHTML, file: src, stack: evt.target.localName.toUpperCase(), line: 0, col: 0, ms: "error", ml: "error" }));
+            this.provider.track({
+                msg: evt.target.outerHTML,
+                file: src,
+                stack: evt.target.localName.toUpperCase(),
+                line: 0,
+                col: 0,
+                ms: "error",
+                ml: "error"
+            });
         }
         else {
             var stack = "";
@@ -1599,7 +1617,15 @@ var ErrorHook = /** @class */ (function (_super) {
                 }
                 stack = ext.join(",");
             }
-            this.provider.track(__assign(__assign({}, getBasicInfo()), { file: evt.filename, line: evt.lineno, col: evt.colno, stack: stack, msg: evt.message, ms: "error", ml: "error" }));
+            this.provider.track({
+                file: evt.filename,
+                line: evt.lineno,
+                col: evt.colno,
+                stack: stack,
+                msg: evt.message,
+                ms: "error",
+                ml: "error"
+            });
         }
     };
     ErrorHook.prototype.watch = function () {
@@ -1624,16 +1650,42 @@ var ActionHook = /** @class */ (function (_super) {
     };
     ActionHook.prototype.listener = function (evt) {
         if (evt instanceof MouseEvent) {
-            this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined, x: evt.x, y: evt.y }));
+            this.provider.track({
+                msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
+                x: evt.x,
+                y: evt.y
+            });
         }
         else if (evt instanceof FocusEvent) {
-            this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "", ms: "action", ml: "info", at: evt.type, el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined }));
+            this.provider.track({
+                msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
+            });
         }
         else if (evt instanceof KeyboardEvent) {
-            this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.type + " " + evt.key, ms: "action", ml: "info", at: evt.type, key: evt.key }));
+            this.provider.track({
+                msg: evt.type + " " + evt.key,
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                key: evt.key
+            });
         }
         else if (evt instanceof InputEvent) {
-            this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.inputType + " " + evt.data, ms: "action", ml: "info", at: evt.type, key: evt.data || "" }));
+            this.provider.track({
+                msg: evt.inputType + " " + evt.data,
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                key: evt.data || ""
+            });
         }
     };
     ActionHook.prototype.watch = function () {
@@ -1679,7 +1731,11 @@ var UncaughtHook = /** @class */ (function (_super) {
     UncaughtHook.prototype.listener = function (evt) {
         evt.stopPropagation();
         evt.preventDefault();
-        this.provider.track(__assign(__assign({}, getBasicInfo()), { msg: evt.reason, ms: "uncaught", ml: "error" }));
+        this.provider.track({
+            msg: evt.reason,
+            ms: "uncaught",
+            ml: "error"
+        });
     };
     UncaughtHook.prototype.watch = function () {
         on("unhandledrejection", this.listener.bind(this));
@@ -1752,7 +1808,7 @@ var PerformanceHook = /** @class */ (function (_super) {
     PerformanceHook.prototype.listener = function (evt) {
         var _this = this;
         setTimeout(function () {
-            _this.provider.track(__assign(__assign(__assign({}, getBasicInfo()), perforPage()), { ms: "performance", ml: "info" }));
+            _this.provider.track(__assign(__assign({}, perforPage()), { msg: "", ms: "performance", ml: "info" }));
         }, 20);
     };
     PerformanceHook.prototype.watch = function () {

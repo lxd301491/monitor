@@ -1,7 +1,7 @@
 import { Store } from "./Store";
 import { before, after } from "./decorators/LifeCycle";
 import { Infos } from "./typings";
-import { getConnection } from "./tools";
+import { getConnection, getBasicInfo } from "./tools";
 
 export class MonitorProvider {
   /**
@@ -21,8 +21,10 @@ export class MonitorProvider {
   @after
   async track(params: Infos) {
     params = {
-      ...params,
-      ...getConnection()
+      ...getBasicInfo(),
+      ...getConnection(),
+      ...params
+      
     }
     if (this.store) this.store.push(params);
     return this;

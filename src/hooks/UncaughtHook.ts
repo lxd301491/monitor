@@ -1,12 +1,11 @@
 import { AbstractHook } from "./AbstractHook";
-import { on, off, getBasicInfo } from "../tools";
+import { on, off } from "../tools";
 
 export class UncaughtHook extends AbstractHook {
   private listener(evt: PromiseRejectionEvent) {
     evt.stopPropagation();
     evt.preventDefault();
     this.provider.track({
-      ...getBasicInfo(),
       msg: evt.reason,
       ms: "uncaught",
       ml: "error"
