@@ -1,7 +1,7 @@
 import { MonitorProvider } from "./MonitorProvider";
 import { MonitorConsumer } from "./MonitorConsumer";
 import { Store } from "./Store";
-import { EmitType } from "./typings";
+import { EmitType, uploadParams } from "./typings";
 import { pv } from "./tools";
 import { HooksFactory } from "./hooks";
 
@@ -37,7 +37,7 @@ export class MonitorCenter {
    * 注册消费者
    * @param consumer 消费者实例
    */
-  subscribe(api: string, zip?: boolean, emitType?: EmitType, func?: (data: string) => Promise<any>): MonitorConsumer {
+  subscribe(api: string, zip?: boolean, emitType?: EmitType, func?: (params: uploadParams) => Promise<any>): MonitorConsumer {
     this.consumers.push(new MonitorConsumer(api, zip, emitType, func));
     return this.consumers[this.consumers.length - 1];
   }

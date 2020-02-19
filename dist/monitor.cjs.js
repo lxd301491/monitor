@@ -198,7 +198,7 @@ function getBasicInfo() {
         // 设备高度像素
         sh: getScreen().h, 
         // 当前版本号
-        v: '1.1.3' });
+        v: '1.1.9' });
 }
 function getScreen() {
     return {
@@ -1304,6 +1304,9 @@ var MonitorConsumer = /** @class */ (function () {
         if (emitType === "custom" && !func) {
             throw Error("When using custom mode, the custom function cannot be empty!");
         }
+        if (emitType === "beacon" && !window.navigator.sendBeacon) {
+            emitType = "fetch";
+        }
         this.api = api;
         this.emitType = emitType;
         this.zip = zip;
@@ -1314,7 +1317,7 @@ var MonitorConsumer = /** @class */ (function () {
     };
     MonitorConsumer.prototype.consume = function (data) {
         return __awaiter(this, void 0, void 0, function () {
-            var _a, _b, err_1;
+            var params, _a, _b, err_1;
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
@@ -1322,11 +1325,14 @@ var MonitorConsumer = /** @class */ (function () {
                             console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration());
                             return [2 /*return*/];
                         }
-                        data = encodeURIComponent(data);
-                        if (this.zip && data.length > infoLenMax) {
-                            console.log("data length before gzip " + data.length);
-                            data = pako.gzip(data, { to: "string" });
-                            console.log("data length after gzip " + data.length);
+                        params = {
+                            data: encodeURIComponent(data)
+                        };
+                        if (this.zip && this.emitType != "image" && params.data.length > infoLenMax) {
+                            console.log("data length before gzip " + params.data.length);
+                            params.data = pako.gzip(params.data, { to: "string" });
+                            console.log("data length after gzip " + params.data.length);
+                            params.zip = true;
                         }
                         _c.label = 1;
                     case 1:
@@ -1339,22 +1345,22 @@ var MonitorConsumer = /** @class */ (function () {
                             case "custom": return [3 /*break*/, 8];
                         }
                         return [3 /*break*/, 11];
-                    case 2: return [4 /*yield*/, this.imageConsume(data)];
+                    case 2: return [4 /*yield*/, this.imageConsume(params)];
                     case 3:
                         _c.sent();
                         return [3 /*break*/, 11];
-                    case 4: return [4 /*yield*/, this.fetchConsume(data)];
+                    case 4: return [4 /*yield*/, this.fetchConsume(params)];
                     case 5:
                         _c.sent();
                         return [3 /*break*/, 11];
-                    case 6: return [4 /*yield*/, this.beaconConsume(data)];
+                    case 6: return [4 /*yield*/, this.beaconConsume(params)];
                     case 7:
                         _c.sent();
                         return [3 /*break*/, 11];
                     case 8:
                         _b = this.func;
                         if (!_b) return [3 /*break*/, 10];
-                        return [4 /*yield*/, this.func(data)];
+                        return [4 /*yield*/, this.func(params)];
                     case 9:
                         _b = (_c.sent());
                         _c.label = 10;
@@ -1370,7 +1376,7 @@ var MonitorConsumer = /** @class */ (function () {
             });
         });
     };
-    MonitorConsumer.prototype.imageConsume = function (data) {
+    MonitorConsumer.prototype.imageConsume = function (params) {
         var _this = this;
         var img = new Image(1, 1);
         return new Promise(function (resolve, reject) {
@@ -1383,27 +1389,31 @@ var MonitorConsumer = /** @class */ (function () {
             img.onabort = function (resp) {
                 reject(resp);
             };
-            img.src = _this.api + "?data=" + data;
+            var paramsArr = [];
+            for (var key in params) {
+                paramsArr.push(key + "=" + params[key]);
+            }
+            img.src = _this.api + "?" + paramsArr.join("&");
         });
     };
-    MonitorConsumer.prototype.fetchConsume = function (data) {
-        return axios.post(this.api, lib.stringify({
-            data: data
-        }), {
+    MonitorConsumer.prototype.fetchConsume = function (params) {
+        return axios.post(this.api, lib.stringify(params), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
     };
-    MonitorConsumer.prototype.beaconConsume = function (data) {
+    MonitorConsumer.prototype.beaconConsume = function (params) {
         var _this = this;
         if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
             return false;
         }
+        var paramsForm = new FormData();
+        for (var key in params) {
+            paramsForm.append(key, params[key]);
+        }
         return new Promise(function (resolve, reject) {
-            window.navigator.sendBeacon(_this.api, JSON.stringify({
-                data: data
-            })) ? resolve() : reject();
+            window.navigator.sendBeacon(_this.api, paramsForm) ? resolve() : reject();
         });
     };
     __decorate([
@@ -1845,6 +1855,7 @@ var MonitorCenter = /** @class */ (function () {
     return MonitorCenter;
 }());
 
+exports.AbstractHook = AbstractHook;
 exports.CircuitBreaker = CircuitBreaker;
 exports.MonitorCenter = MonitorCenter;
 exports.lifeCycle = lifeCycle;

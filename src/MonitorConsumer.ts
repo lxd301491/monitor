@@ -1,11 +1,10 @@
 import { CircuitBreaker } from "./tools/CircuitBreaker";
-import { EmitType } from "./typings";
+import { EmitType, uploadParams } from "./typings";
 import { before, after } from "./decorators/LifeCycle";
 import { infoLenMax } from "./configs";
 import axios from 'axios';
 import qs from 'qs';
 import pako from 'pako';
-
 
 export class MonitorConsumer {
   private api: string;
@@ -15,12 +14,16 @@ export class MonitorConsumer {
     "0/60"
   );
   private emitType: EmitType;
-  private func?: (data: string) => Promise<any>;
+  private func?: (params: uploadParams) => Promise<any>;
   private zip: boolean;
 
-  constructor(api: string, zip: boolean = true, emitType: EmitType = "image", func?: (data: string) => Promise<any>){
+  constructor(api: string, zip: boolean = true, emitType: EmitType = "image", func?: (params: uploadParams) => Promise<any>){
     if (emitType === "custom" && !func) {
       throw Error("When using custom mode, the custom function cannot be empty!");
+    }
+    if (emitType === "beacon" && !window.navigator.sendBeacon) {
+      emitType = "fetch";
+
     }
     this.api = api;
     this.emitType = emitType;
@@ -39,28 +42,31 @@ export class MonitorConsumer {
       console.log("abnormalBreaker count", this.abnormalBreaker.getCount(), this.abnormalBreaker.getStateName(), "Duration", this.abnormalBreaker.getDuration())
       return;
     }
-    data = encodeURIComponent(data);
-    if (this.zip && data.length > infoLenMax) {
-      console.log(`data length before gzip ${data.length}`);
-      data = pako.gzip(data, {to: "string"});
-      console.log(`data length after gzip ${data.length}`);
+    let params: uploadParams = {
+      data: encodeURIComponent(data)
+    }
+    if (this.zip && this.emitType != "image" && params.data.length > infoLenMax) {
+      console.log(`data length before gzip ${params.data.length}`);
+      params.data = pako.gzip(params.data, {to: "string"});
+      console.log(`data length after gzip ${params.data.length}`);
+      params.zip = true;
     }
     try {
       switch (this.emitType) {
         case "image": {
-          await this.imageConsume(data);
+          await this.imageConsume(params);
           break;
         }
         case "fetch": {
-          await this.fetchConsume(data);
+          await this.fetchConsume(params);
           break;
         }
         case "beacon": {
-          await this.beaconConsume(data);
+          await this.beaconConsume(params);
           break;
         }
         case "custom": {
-          this.func && await this.func(data);
+          this.func && await this.func(params);
         }
       }
     } catch (err) {
@@ -68,7 +74,7 @@ export class MonitorConsumer {
     }
   }
 
-  private imageConsume(data: string) {
+  private imageConsume(params: uploadParams) {
     let img = new Image(1, 1);
     return new Promise((resolve, reject) => {
       img.onerror = (err) => {
@@ -80,28 +86,32 @@ export class MonitorConsumer {
       img.onabort = (resp) => {
         reject(resp);
       };
-      img.src = this.api + "?data=" + data;
+      let paramsArr: string[] = []; 
+      for (let key in params) {
+        paramsArr.push(`${key}=${params[key]}`)
+      }
+      img.src = this.api + "?" + paramsArr.join("&");
     })
   }
   
-  private fetchConsume(data: string) {
-    return axios.post(this.api, qs.stringify({
-      data: data
-    }), {
+  private fetchConsume(params: uploadParams) {
+    return axios.post(this.api, qs.stringify(params), {
       headers: {
         'Content-Type':'application/x-www-form-urlencoded'
       }
     })
   }
 
-  private beaconConsume(data: string) {
+  private beaconConsume(params: uploadParams) {
     if (!window || !window.navigator || "function" != typeof window.navigator.sendBeacon) {
       return false;
     }
+    let paramsForm: FormData = new FormData(); 
+    for (let key in params) {
+      paramsForm.append(key, params[key]);
+    }
     return new Promise((resolve, reject) => {
-      window.navigator.sendBeacon(this.api, JSON.stringify({
-        data: data
-      })) ? resolve() : reject();
+      window.navigator.sendBeacon(this.api, paramsForm) ? resolve() : reject();
     })
   }
 }

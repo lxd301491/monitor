@@ -14,15 +14,9 @@
     </div>
   </body>
   <script>
-    Monitor.lifeCycle.track.before = function(data) {
-      console.log("track before", event,data);
-    }
-    Monitor.lifeCycle.consume.before = function(data) {
-      console.log("consume before", event,data);
-    }
     var center = new Monitor.MonitorCenter("test");
-    center.subscribe("https://localhost:8080");
-    center.start();
+    center.subscribe("https://localhost:8080/pako/gzip", true, "beacon");
+    center.start(3000);
     center.hooks.watch("error");
     center.hooks.watch("uncaught");
     center.hooks.watch("action");

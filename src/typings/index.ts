@@ -111,3 +111,9 @@ export interface actionInfo extends basicInfo {
   // 鼠标或者手指纵坐标
   y?: number
 }
+
+export interface uploadParams {
+  data: string;
+  zip?: boolean;
+  [propName: string]: any;
+}
