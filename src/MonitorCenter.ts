@@ -15,7 +15,7 @@ export class MonitorCenter {
   constructor (appName: string) {
     this.store = new Store(appName);
     this.provider = new MonitorProvider(this.store);
-    this.hooks = new HooksFactory().initlize(this.provider);
+    this.hooks = new HooksFactory(this.provider).initlize();
     pv(this.provider);
   }
 

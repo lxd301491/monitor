@@ -9,8 +9,13 @@ import { MonitorProvider } from "../MonitorProvider";
 
 export class HooksFactory {
   private hooks: Map<string, AbstractHook> = new Map();
+  private provider: MonitorProvider;
 
-  public reigster<T extends AbstractHook>(key: string, hook: T): HooksFactory {
+  constructor (provider: MonitorProvider) {
+    this.provider = provider;
+  }
+
+  public reigster<T extends AbstractHook>(key: string, hook: {new(provider: MonitorProvider): T}): HooksFactory {
     let it = this.hooks.keys();
     let r: IteratorResult<string>;
     while (r = it.next() , !r.done) {
@@ -18,7 +23,7 @@ export class HooksFactory {
         throw TypeError(`the hook type "${key}" already exists！`);
       }
     }
-    this.hooks.set(key, hook);
+    this.hooks.set(key, new hook(this.provider));
     return this;
   }
 
@@ -38,12 +43,12 @@ export class HooksFactory {
     return this;
   }
 
-  public initlize(provider: MonitorProvider): HooksFactory {
-    this.reigster("error", new ErrorHook(provider));
-    this.reigster("uncaught", new UncaughtHook(provider));
-    this.reigster("action", new ActionHook(provider));
-    this.reigster("spa", new SPARouterHook(provider));
-    this.reigster("performance", new PerformanceHook(provider));
+  public initlize(): HooksFactory {
+    this.reigster("error", ErrorHook);
+    this.reigster("uncaught", UncaughtHook);
+    this.reigster("action", ActionHook);
+    this.reigster("spa", SPARouterHook);
+    this.reigster("performance", PerformanceHook);
     return this;
   }
 }
