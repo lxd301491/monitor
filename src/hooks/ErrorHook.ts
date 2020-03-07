@@ -33,16 +33,18 @@ export class ErrorHook extends AbstractHook {
           }
           stack = ext.join(",");
       }
-      //把data上报到后台！
-      this.provider.track({
-        file: source,
-        line: lineno,
-        col: colno,
-        stack: stack,
-        msg: error.message,
-        ms: "error",
-        ml: "error"
-      });
+      if (event || error) {
+        //把data上报到后台！
+        this.provider.track({
+          file: source,
+          line: lineno,
+          col: colno,
+          stack: stack,
+          msg: error.message,
+          ms: "error",
+          ml: "error"
+        });
+      }
     },0);
 
     return true;

@@ -310,12 +310,8 @@ function getConnection() {
     };
 }
 function on(event, listener) {
-    window.addEventListener && window.addEventListener(event, function eventHandle(ev) {
-        listener.call(this, ev);
-    }, true);
-    window.attachEvent && window.attachEvent("on" + event, function eventHandle(ev) {
-        listener.call(this, ev);
-    });
+    window.addEventListener && window.addEventListener(event, listener, true);
+    window.attachEvent && window.attachEvent("on" + event, listener);
 }
 function off(event, listener) {
     window.removeEventListener && window.removeEventListener(event, listener);
@@ -1575,8 +1571,10 @@ var AbstractHook = /** @class */ (function () {
 
 var ErrorHook = /** @class */ (function (_super) {
     __extends(ErrorHook, _super);
-    function ErrorHook() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function ErrorHook(provider) {
+        var _this = _super.call(this, provider) || this;
+        _this.handler = _this.listener.bind(_this);
+        return _this;
     }
     ErrorHook.prototype.onError = function (event, source, lineno, colno, error) {
         setTimeout(function () {
@@ -1601,16 +1599,18 @@ var ErrorHook = /** @class */ (function (_super) {
                 }
                 stack = ext.join(",");
             }
-            //把data上报到后台！
-            this.provider.track({
-                file: source,
-                line: lineno,
-                col: colno,
-                stack: stack,
-                msg: error.message,
-                ms: "error",
-                ml: "error"
-            });
+            if (event || error) {
+                //把data上报到后台！
+                this.provider.track({
+                    file: source,
+                    line: lineno,
+                    col: colno,
+                    stack: stack,
+                    msg: error.message,
+                    ms: "error",
+                    ml: "error"
+                });
+            }
         }, 0);
         return true;
     };
@@ -1636,20 +1636,19 @@ var ErrorHook = /** @class */ (function (_super) {
     };
     ErrorHook.prototype.watch = function () {
         replace(window, "onerror", this.onError);
-        on("error", this.listener.bind(this));
+        on("error", this.handler);
     };
     ErrorHook.prototype.unwatch = function () {
         reduction(window, "onerror");
-        off("error", this.listener.bind(this));
+        off("error", this.handler);
     };
     return ErrorHook;
 }(AbstractHook));
 
-var actionData = /** @class */ (function () {
-    function actionData() {
-        this.events = [];
+var ActionEvent = /** @class */ (function () {
+    function ActionEvent() {
     }
-    return actionData;
+    return ActionEvent;
 }());
 var NodeEventHandlerMap = /** @class */ (function () {
     function NodeEventHandlerMap() {
@@ -1670,7 +1669,7 @@ var ActionHook = /** @class */ (function (_super) {
             subtree: true,
             childList: true,
             attributes: true,
-            attributeFilter: ["action-events"]
+            attributeFilter: ["jr-event", "jr-msg", "jr-area"]
         });
         return _this;
     }
@@ -1684,6 +1683,7 @@ var ActionHook = /** @class */ (function (_super) {
         node.childNodes && node.childNodes.forEach(function (node) {
             _this.nodeBindActionHandler(node);
         });
+        var actionEvents = [];
         var attributes = node.attributes || [];
         for (var i = 0, len = attributes.length; i < len; ++i) {
             var attr = void 0;
@@ -1693,21 +1693,36 @@ var ActionHook = /** @class */ (function (_super) {
             else {
                 attr = attributes[i];
             }
-            if (attr && attr.name === 'action-events') {
-                var aData = attr.value.splite(",");
-                if (aData instanceof actionData) {
-                    aData.events.forEach(function (event) {
-                        _this.watch(node, event);
-                    });
-                }
+            if (attr && attr.name === 'jr-event') {
+                var events = attr.value.split(";");
+                events.forEach(function (value) {
+                    var actionEvent = new ActionEvent();
+                    actionEvent.event = value;
+                    actionEvents.push(actionEvent);
+                });
+            }
+            if (attr && attr.name === 'jr-msg') {
+                var msgs = attr.value.split(";");
+                msgs.forEach(function (value, index) {
+                    actionEvents[index].msg = value;
+                });
+            }
+            if (attr && attr.name === 'jr-area') {
+                var areas = attr.value.split(";");
+                areas.forEach(function (value, index) {
+                    actionEvents[index].area = value;
+                });
             }
         }
+        actionEvents.forEach(function (item) {
+            _this.watch(node, item.event, item.msg, item.area);
+        });
     };
     ActionHook.prototype.getCurrentElement = function (target) {
         var r = target.outerHTML.match("<.+?>");
         return r && r[0] || "";
     };
-    ActionHook.prototype.listener = function (evt) {
+    ActionHook.prototype.listener = function (args, evt) {
         if (evt instanceof MouseEvent) {
             this.provider.track({
                 msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
@@ -1798,7 +1813,7 @@ var ActionHook = /** @class */ (function (_super) {
         for (var i = this.handlerMap.length - 1; i >= 0; i--) {
             if (this.handlerMap[i].node == selector && this.handlerMap[i].event == event) {
                 if (selector) {
-                    selector.removeEventListener(event, this.listener);
+                    selector.removeEventListener(event, this.handlerMap[i].handler);
                 }
                 this.handlerMap.splice(i, 1);
             }
@@ -1809,8 +1824,10 @@ var ActionHook = /** @class */ (function (_super) {
 
 var UncaughtHook = /** @class */ (function (_super) {
     __extends(UncaughtHook, _super);
-    function UncaughtHook() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function UncaughtHook(provider) {
+        var _this = _super.call(this, provider) || this;
+        _this.handler = _this.listener.bind(_this);
+        return _this;
     }
     UncaughtHook.prototype.listener = function (evt) {
         evt.stopPropagation();
@@ -1822,18 +1839,21 @@ var UncaughtHook = /** @class */ (function (_super) {
         });
     };
     UncaughtHook.prototype.watch = function () {
-        on("unhandledrejection", this.listener.bind(this));
+        on("unhandledrejection", this.handler);
     };
     UncaughtHook.prototype.unwatch = function () {
-        off("unhandledrejection", this.listener.bind(this));
+        off("unhandledrejection", this.handler);
     };
     return UncaughtHook;
 }(AbstractHook));
 
 var SPARouterHook = /** @class */ (function (_super) {
     __extends(SPARouterHook, _super);
-    function SPARouterHook() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function SPARouterHook(provider) {
+        var _this = _super.call(this, provider) || this;
+        _this.hashchangeHandler = _this.handleHashchange.bind(_this);
+        _this.historystatechangedHandler = _this.handleHistorystatechange.bind(_this);
+        return _this;
     }
     SPARouterHook.prototype.hackState = function (e) {
         replace(history, e, function (data, title, url) {
@@ -1872,22 +1892,24 @@ var SPARouterHook = /** @class */ (function (_super) {
     SPARouterHook.prototype.watch = function () {
         this.hackState('pushState');
         this.hackState('replaceState');
-        on('hashchange', this.handleHashchange.bind(this));
-        on('historystatechanged', this.handleHistorystatechange.bind(this));
+        on('hashchange', this.hashchangeHandler);
+        on('historystatechanged', this.historystatechangedHandler);
     };
     SPARouterHook.prototype.unwatch = function () {
         this.dehackState('pushState');
         this.dehackState('replaceState');
-        off('hashchange', this.handleHashchange.bind(this));
-        off('historystatechanged', this.handleHistorystatechange.bind(this));
+        off('hashchange', this.hashchangeHandler);
+        off('historystatechanged', this.historystatechangedHandler);
     };
     return SPARouterHook;
 }(AbstractHook));
 
 var PerformanceHook = /** @class */ (function (_super) {
     __extends(PerformanceHook, _super);
-    function PerformanceHook() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function PerformanceHook(provider) {
+        var _this = _super.call(this, provider) || this;
+        _this.handler = _this.listener.bind(_this);
+        return _this;
     }
     PerformanceHook.prototype.listener = function (evt) {
         var _this = this;
@@ -1896,10 +1918,10 @@ var PerformanceHook = /** @class */ (function (_super) {
         }, 20);
     };
     PerformanceHook.prototype.watch = function () {
-        on("load", this.listener.bind(this));
+        on("load", this.handler);
     };
     PerformanceHook.prototype.unwatch = function () {
-        off("load", this.listener.bind(this));
+        off("load", this.handler);
     };
     return PerformanceHook;
 }(AbstractHook));
