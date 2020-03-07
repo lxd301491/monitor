@@ -92,17 +92,6 @@ function __generator(thisArg, body) {
     }
 }
 
-function __values(o) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
-    if (m) return m.call(o);
-    return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
-        }
-    };
-}
-
 var lifeCycle = {
     consume: {
         before: function () { },
@@ -297,27 +286,17 @@ function getConnection() {
         csa: saveData
     };
 }
-function on(event, listener, remove) {
-    if (window.addEventListener) {
-        window.addEventListener(event, function eventHandle(ev) {
-            remove && window.removeEventListener(event, eventHandle, true);
-            listener.call(this, ev);
-        }, true);
-    }
-    if (window.attachEvent) {
-        window.attachEvent("on" + event, function eventHandle(ev) {
-            remove && window.detachEvent("on" + event, eventHandle);
-            listener.call(this, ev);
-        });
-    }
+function on(event, listener) {
+    window.addEventListener && window.addEventListener(event, function eventHandle(ev) {
+        listener.call(this, ev);
+    }, true);
+    window.attachEvent && window.attachEvent("on" + event, function eventHandle(ev) {
+        listener.call(this, ev);
+    });
 }
 function off(event, listener) {
-    if (window.removeEventListener) {
-        window.removeEventListener(event, listener);
-    }
-    if (window.detachEvent) {
-        window.detachEvent(event, listener);
-    }
+    window.removeEventListener && window.removeEventListener(event, listener);
+    window.detachEvent && window.detachEvent(event, listener);
 }
 // 自定义事件，并dispatch
 function dispatchCustomEvent(e, t) {
@@ -1637,13 +1616,1057 @@ var ErrorHook = /** @class */ (function (_super) {
     return ErrorHook;
 }(AbstractHook));
 
-var actions = ["click", "input", "blur"];
+function unwrapExports (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
 
+function createCommonjsModule(fn, module) {
+	return module = { exports: {} }, fn(module, module.exports), module.exports;
+}
+
+var MetadataStorage_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+
+/**
+ * Storage all library metadata.
+ */
+var MetadataStorage = /** @class */ (function () {
+    function MetadataStorage() {
+        // -------------------------------------------------------------------------
+        // Properties
+        // -------------------------------------------------------------------------
+        this._typeMetadatas = new Map();
+        this._transformMetadatas = new Map();
+        this._exposeMetadatas = new Map();
+        this._excludeMetadatas = new Map();
+        this._ancestorsMap = new Map();
+    }
+    // -------------------------------------------------------------------------
+    // Adder Methods
+    // -------------------------------------------------------------------------
+    MetadataStorage.prototype.addTypeMetadata = function (metadata) {
+        if (!this._typeMetadatas.has(metadata.target)) {
+            this._typeMetadatas.set(metadata.target, new Map());
+        }
+        this._typeMetadatas.get(metadata.target).set(metadata.propertyName, metadata);
+    };
+    MetadataStorage.prototype.addTransformMetadata = function (metadata) {
+        if (!this._transformMetadatas.has(metadata.target)) {
+            this._transformMetadatas.set(metadata.target, new Map());
+        }
+        if (!this._transformMetadatas.get(metadata.target).has(metadata.propertyName)) {
+            this._transformMetadatas.get(metadata.target).set(metadata.propertyName, []);
+        }
+        this._transformMetadatas.get(metadata.target).get(metadata.propertyName).push(metadata);
+    };
+    MetadataStorage.prototype.addExposeMetadata = function (metadata) {
+        if (!this._exposeMetadatas.has(metadata.target)) {
+            this._exposeMetadatas.set(metadata.target, new Map());
+        }
+        this._exposeMetadatas.get(metadata.target).set(metadata.propertyName, metadata);
+    };
+    MetadataStorage.prototype.addExcludeMetadata = function (metadata) {
+        if (!this._excludeMetadatas.has(metadata.target)) {
+            this._excludeMetadatas.set(metadata.target, new Map());
+        }
+        this._excludeMetadatas.get(metadata.target).set(metadata.propertyName, metadata);
+    };
+    // -------------------------------------------------------------------------
+    // Public Methods
+    // -------------------------------------------------------------------------
+    MetadataStorage.prototype.findTransformMetadatas = function (target, propertyName, transformationType) {
+        return this.findMetadatas(this._transformMetadatas, target, propertyName)
+            .filter(function (metadata) {
+            if (!metadata.options)
+                return true;
+            if (metadata.options.toClassOnly === true && metadata.options.toPlainOnly === true)
+                return true;
+            if (metadata.options.toClassOnly === true) {
+                return transformationType === TransformOperationExecutor_1.TransformationType.CLASS_TO_CLASS || transformationType === TransformOperationExecutor_1.TransformationType.PLAIN_TO_CLASS;
+            }
+            if (metadata.options.toPlainOnly === true) {
+                return transformationType === TransformOperationExecutor_1.TransformationType.CLASS_TO_PLAIN;
+            }
+            return true;
+        });
+    };
+    MetadataStorage.prototype.findExcludeMetadata = function (target, propertyName) {
+        return this.findMetadata(this._excludeMetadatas, target, propertyName);
+    };
+    MetadataStorage.prototype.findExposeMetadata = function (target, propertyName) {
+        return this.findMetadata(this._exposeMetadatas, target, propertyName);
+    };
+    MetadataStorage.prototype.findExposeMetadataByCustomName = function (target, name) {
+        return this.getExposedMetadatas(target).find(function (metadata) {
+            return metadata.options && metadata.options.name === name;
+        });
+    };
+    MetadataStorage.prototype.findTypeMetadata = function (target, propertyName) {
+        return this.findMetadata(this._typeMetadatas, target, propertyName);
+    };
+    MetadataStorage.prototype.getStrategy = function (target) {
+        var excludeMap = this._excludeMetadatas.get(target);
+        var exclude = excludeMap && excludeMap.get(undefined);
+        var exposeMap = this._exposeMetadatas.get(target);
+        var expose = exposeMap && exposeMap.get(undefined);
+        if ((exclude && expose) || (!exclude && !expose))
+            return "none";
+        return exclude ? "excludeAll" : "exposeAll";
+    };
+    MetadataStorage.prototype.getExposedMetadatas = function (target) {
+        return this.getMetadata(this._exposeMetadatas, target);
+    };
+    MetadataStorage.prototype.getExcludedMetadatas = function (target) {
+        return this.getMetadata(this._excludeMetadatas, target);
+    };
+    MetadataStorage.prototype.getExposedProperties = function (target, transformationType) {
+        return this.getExposedMetadatas(target)
+            .filter(function (metadata) {
+            if (!metadata.options)
+                return true;
+            if (metadata.options.toClassOnly === true && metadata.options.toPlainOnly === true)
+                return true;
+            if (metadata.options.toClassOnly === true) {
+                return transformationType === TransformOperationExecutor_1.TransformationType.CLASS_TO_CLASS || transformationType === TransformOperationExecutor_1.TransformationType.PLAIN_TO_CLASS;
+            }
+            if (metadata.options.toPlainOnly === true) {
+                return transformationType === TransformOperationExecutor_1.TransformationType.CLASS_TO_PLAIN;
+            }
+            return true;
+        })
+            .map(function (metadata) { return metadata.propertyName; });
+    };
+    MetadataStorage.prototype.getExcludedProperties = function (target, transformationType) {
+        return this.getExcludedMetadatas(target)
+            .filter(function (metadata) {
+            if (!metadata.options)
+                return true;
+            if (metadata.options.toClassOnly === true && metadata.options.toPlainOnly === true)
+                return true;
+            if (metadata.options.toClassOnly === true) {
+                return transformationType === TransformOperationExecutor_1.TransformationType.CLASS_TO_CLASS || transformationType === TransformOperationExecutor_1.TransformationType.PLAIN_TO_CLASS;
+            }
+            if (metadata.options.toPlainOnly === true) {
+                return transformationType === TransformOperationExecutor_1.TransformationType.CLASS_TO_PLAIN;
+            }
+            return true;
+        })
+            .map(function (metadata) { return metadata.propertyName; });
+    };
+    MetadataStorage.prototype.clear = function () {
+        this._typeMetadatas.clear();
+        this._exposeMetadatas.clear();
+        this._excludeMetadatas.clear();
+        this._ancestorsMap.clear();
+    };
+    // -------------------------------------------------------------------------
+    // Private Methods
+    // -------------------------------------------------------------------------
+    MetadataStorage.prototype.getMetadata = function (metadatas, target) {
+        var metadataFromTargetMap = metadatas.get(target);
+        var metadataFromTarget;
+        if (metadataFromTargetMap) {
+            metadataFromTarget = Array.from(metadataFromTargetMap.values()).filter(function (meta) { return meta.propertyName !== undefined; });
+        }
+        var metadataFromAncestors = [];
+        for (var _i = 0, _a = this.getAncestors(target); _i < _a.length; _i++) {
+            var ancestor = _a[_i];
+            var ancestorMetadataMap = metadatas.get(ancestor);
+            if (ancestorMetadataMap) {
+                var metadataFromAncestor = Array.from(ancestorMetadataMap.values()).filter(function (meta) { return meta.propertyName !== undefined; });
+                metadataFromAncestors.push.apply(metadataFromAncestors, metadataFromAncestor);
+            }
+        }
+        return metadataFromAncestors.concat(metadataFromTarget || []);
+    };
+    MetadataStorage.prototype.findMetadata = function (metadatas, target, propertyName) {
+        var metadataFromTargetMap = metadatas.get(target);
+        if (metadataFromTargetMap) {
+            var metadataFromTarget = metadataFromTargetMap.get(propertyName);
+            if (metadataFromTarget) {
+                return metadataFromTarget;
+            }
+        }
+        for (var _i = 0, _a = this.getAncestors(target); _i < _a.length; _i++) {
+            var ancestor = _a[_i];
+            var ancestorMetadataMap = metadatas.get(ancestor);
+            if (ancestorMetadataMap) {
+                var ancestorResult = ancestorMetadataMap.get(propertyName);
+                if (ancestorResult) {
+                    return ancestorResult;
+                }
+            }
+        }
+        return undefined;
+    };
+    MetadataStorage.prototype.findMetadatas = function (metadatas, target, propertyName) {
+        var metadataFromTargetMap = metadatas.get(target);
+        var metadataFromTarget;
+        if (metadataFromTargetMap) {
+            metadataFromTarget = metadataFromTargetMap.get(propertyName);
+        }
+        var metadataFromAncestorsTarget = [];
+        for (var _i = 0, _a = this.getAncestors(target); _i < _a.length; _i++) {
+            var ancestor = _a[_i];
+            var ancestorMetadataMap = metadatas.get(ancestor);
+            if (ancestorMetadataMap) {
+                if (ancestorMetadataMap.has(propertyName)) {
+                    metadataFromAncestorsTarget.push.apply(metadataFromAncestorsTarget, ancestorMetadataMap.get(propertyName));
+                }
+            }
+        }
+        return (metadataFromAncestorsTarget).reverse().concat((metadataFromTarget || []).reverse());
+    };
+    MetadataStorage.prototype.getAncestors = function (target) {
+        if (!target)
+            return [];
+        if (!this._ancestorsMap.has(target)) {
+            var ancestors = [];
+            for (var baseClass = Object.getPrototypeOf(target.prototype.constructor); typeof baseClass.prototype !== "undefined"; baseClass = Object.getPrototypeOf(baseClass.prototype.constructor)) {
+                ancestors.push(baseClass);
+            }
+            this._ancestorsMap.set(target, ancestors);
+        }
+        return this._ancestorsMap.get(target);
+    };
+    return MetadataStorage;
+}());
+exports.MetadataStorage = MetadataStorage;
+
+
+});
+
+unwrapExports(MetadataStorage_1);
+var MetadataStorage_2 = MetadataStorage_1.MetadataStorage;
+
+var storage = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+
+/**
+ * Default metadata storage is used as singleton and can be used to storage all metadatas.
+ */
+exports.defaultMetadataStorage = new MetadataStorage_1.MetadataStorage();
+
+
+});
+
+unwrapExports(storage);
+var storage_1 = storage.defaultMetadataStorage;
+
+var TransformOperationExecutor_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+
+var TransformationType;
+(function (TransformationType) {
+    TransformationType[TransformationType["PLAIN_TO_CLASS"] = 0] = "PLAIN_TO_CLASS";
+    TransformationType[TransformationType["CLASS_TO_PLAIN"] = 1] = "CLASS_TO_PLAIN";
+    TransformationType[TransformationType["CLASS_TO_CLASS"] = 2] = "CLASS_TO_CLASS";
+})(TransformationType = exports.TransformationType || (exports.TransformationType = {}));
+var TransformOperationExecutor = /** @class */ (function () {
+    // -------------------------------------------------------------------------
+    // Constructor
+    // -------------------------------------------------------------------------
+    function TransformOperationExecutor(transformationType, options) {
+        this.transformationType = transformationType;
+        this.options = options;
+        // -------------------------------------------------------------------------
+        // Private Properties
+        // -------------------------------------------------------------------------
+        this.recursionStack = new Set();
+    }
+    // -------------------------------------------------------------------------
+    // Public Methods
+    // -------------------------------------------------------------------------
+    TransformOperationExecutor.prototype.transform = function (source, value, targetType, arrayType, isMap, level) {
+        var _this = this;
+        if (level === void 0) { level = 0; }
+        if (Array.isArray(value) || value instanceof Set) {
+            var newValue_1 = arrayType && this.transformationType === TransformationType.PLAIN_TO_CLASS ? instantiateArrayType(arrayType) : [];
+            value.forEach(function (subValue, index) {
+                var subSource = source ? source[index] : undefined;
+                if (!_this.options.enableCircularCheck || !_this.isCircular(subValue)) {
+                    var realTargetType = void 0;
+                    if (typeof targetType !== "function" && targetType && targetType.options && targetType.options.discriminator && targetType.options.discriminator.property && targetType.options.discriminator.subTypes) {
+                        if (_this.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                            realTargetType = targetType.options.discriminator.subTypes.find(function (subType) { return subType.name === subValue[targetType.options.discriminator.property]; });
+                            var options = { newObject: newValue_1, object: subValue, property: undefined };
+                            var newType = targetType.typeFunction(options);
+                            realTargetType === undefined ? realTargetType = newType : realTargetType = realTargetType.value;
+                            if (!targetType.options.keepDiscriminatorProperty)
+                                delete subValue[targetType.options.discriminator.property];
+                        }
+                        if (_this.transformationType === TransformationType.CLASS_TO_CLASS) {
+                            realTargetType = subValue.constructor;
+                        }
+                        if (_this.transformationType === TransformationType.CLASS_TO_PLAIN) {
+                            subValue[targetType.options.discriminator.property] = targetType.options.discriminator.subTypes.find(function (subType) { return subType.value === subValue.constructor; }).name;
+                        }
+                    }
+                    else {
+                        realTargetType = targetType;
+                    }
+                    var value_1 = _this.transform(subSource, subValue, realTargetType, undefined, subValue instanceof Map, level + 1);
+                    if (newValue_1 instanceof Set) {
+                        newValue_1.add(value_1);
+                    }
+                    else {
+                        newValue_1.push(value_1);
+                    }
+                }
+                else if (_this.transformationType === TransformationType.CLASS_TO_CLASS) {
+                    if (newValue_1 instanceof Set) {
+                        newValue_1.add(subValue);
+                    }
+                    else {
+                        newValue_1.push(subValue);
+                    }
+                }
+            });
+            return newValue_1;
+        }
+        else if (targetType === String && !isMap) {
+            if (value === null || value === undefined)
+                return value;
+            return String(value);
+        }
+        else if (targetType === Number && !isMap) {
+            if (value === null || value === undefined)
+                return value;
+            return Number(value);
+        }
+        else if (targetType === Boolean && !isMap) {
+            if (value === null || value === undefined)
+                return value;
+            return Boolean(value);
+        }
+        else if ((targetType === Date || value instanceof Date) && !isMap) {
+            if (value instanceof Date) {
+                return new Date(value.valueOf());
+            }
+            if (value === null || value === undefined)
+                return value;
+            return new Date(value);
+        }
+        else if (testForBuffer() && (targetType === Buffer || value instanceof Buffer) && !isMap) {
+            if (value === null || value === undefined)
+                return value;
+            return Buffer.from(value);
+        }
+        else if (typeof value === "object" && value !== null) {
+            // try to guess the type
+            if (!targetType && value.constructor !== Object /* && TransformationType === TransformationType.CLASS_TO_PLAIN*/)
+                targetType = value.constructor;
+            if (!targetType && source)
+                targetType = source.constructor;
+            if (this.options.enableCircularCheck) {
+                // add transformed type to prevent circular references
+                this.recursionStack.add(value);
+            }
+            var keys = this.getKeys(targetType, value);
+            var newValue = source ? source : {};
+            if (!source && (this.transformationType === TransformationType.PLAIN_TO_CLASS || this.transformationType === TransformationType.CLASS_TO_CLASS)) {
+                if (isMap) {
+                    newValue = new Map();
+                }
+                else if (targetType) {
+                    newValue = new targetType();
+                }
+                else {
+                    newValue = {};
+                }
+            }
+            var _loop_1 = function (key) {
+                var valueKey = key, newValueKey = key, propertyName = key;
+                if (!this_1.options.ignoreDecorators && targetType) {
+                    if (this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                        var exposeMetadata = storage.defaultMetadataStorage.findExposeMetadataByCustomName(targetType, key);
+                        if (exposeMetadata) {
+                            propertyName = exposeMetadata.propertyName;
+                            newValueKey = exposeMetadata.propertyName;
+                        }
+                    }
+                    else if (this_1.transformationType === TransformationType.CLASS_TO_PLAIN || this_1.transformationType === TransformationType.CLASS_TO_CLASS) {
+                        var exposeMetadata = storage.defaultMetadataStorage.findExposeMetadata(targetType, key);
+                        if (exposeMetadata && exposeMetadata.options && exposeMetadata.options.name) {
+                            newValueKey = exposeMetadata.options.name;
+                        }
+                    }
+                }
+                // get a subvalue
+                var subValue = undefined;
+                if (value instanceof Map) {
+                    subValue = value.get(valueKey);
+                }
+                else if (value[valueKey] instanceof Function) {
+                    subValue = value[valueKey]();
+                }
+                else {
+                    subValue = value[valueKey];
+                }
+                // determine a type
+                var type = undefined, isSubValueMap = subValue instanceof Map;
+                if (targetType && isMap) {
+                    type = targetType;
+                }
+                else if (targetType) {
+                    var metadata_1 = storage.defaultMetadataStorage.findTypeMetadata(targetType, propertyName);
+                    if (metadata_1) {
+                        var options = { newObject: newValue, object: value, property: propertyName };
+                        var newType = metadata_1.typeFunction ? metadata_1.typeFunction(options) : metadata_1.reflectedType;
+                        if (metadata_1.options && metadata_1.options.discriminator && metadata_1.options.discriminator.property && metadata_1.options.discriminator.subTypes) {
+                            if (!(value[valueKey] instanceof Array)) {
+                                if (this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                                    type = metadata_1.options.discriminator.subTypes.find(function (subType) {
+                                        if (subValue && metadata_1.options.discriminator.property in subValue) {
+                                            return subType.name === subValue[metadata_1.options.discriminator.property];
+                                        }
+                                    });
+                                    type === undefined ? type = newType : type = type.value;
+                                    if (!metadata_1.options.keepDiscriminatorProperty) {
+                                        if (subValue && metadata_1.options.discriminator.property in subValue) {
+                                            delete subValue[metadata_1.options.discriminator.property];
+                                        }
+                                    }
+                                }
+                                if (this_1.transformationType === TransformationType.CLASS_TO_CLASS) {
+                                    type = subValue.constructor;
+                                }
+                                if (this_1.transformationType === TransformationType.CLASS_TO_PLAIN) {
+                                    subValue[metadata_1.options.discriminator.property] = metadata_1.options.discriminator.subTypes.find(function (subType) { return subType.value === subValue.constructor; }).name;
+                                }
+                            }
+                            else {
+                                type = metadata_1;
+                            }
+                        }
+                        else {
+                            type = newType;
+                        }
+                        isSubValueMap = isSubValueMap || metadata_1.reflectedType === Map;
+                    }
+                    else if (this_1.options.targetMaps) { // try to find a type in target maps
+                        this_1.options.targetMaps
+                            .filter(function (map) { return map.target === targetType && !!map.properties[propertyName]; })
+                            .forEach(function (map) { return type = map.properties[propertyName]; });
+                    }
+                    else if (this_1.options.enableImplicitConversion && this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                        // if we have no registererd type via the @Type() decorator then we check if we have any
+                        // type declarations in reflect-metadata (type declaration is emited only if some decorator is added to the property.)
+                        var reflectedType = Reflect.getMetadata("design:type", targetType.prototype, propertyName);
+                        if (reflectedType) {
+                            type = reflectedType;
+                        }
+                    }
+                }
+                // if value is an array try to get its custom array type
+                var arrayType_1 = Array.isArray(value[valueKey]) ? this_1.getReflectedType(targetType, propertyName) : undefined;
+                // const subValueKey = TransformationType === TransformationType.PLAIN_TO_CLASS && newKeyName ? newKeyName : key;
+                var subSource = source ? source[valueKey] : undefined;
+                // if its deserialization then type if required
+                // if we uncomment this types like string[] will not work
+                // if (this.transformationType === TransformationType.PLAIN_TO_CLASS && !type && subValue instanceof Object && !(subValue instanceof Date))
+                //     throw new Error(`Cannot determine type for ${(targetType as any).name }.${propertyName}, did you forget to specify a @Type?`);
+                // if newValue is a source object that has method that match newKeyName then skip it
+                if (newValue.constructor.prototype) {
+                    var descriptor = Object.getOwnPropertyDescriptor(newValue.constructor.prototype, newValueKey);
+                    if ((this_1.transformationType === TransformationType.PLAIN_TO_CLASS || this_1.transformationType === TransformationType.CLASS_TO_CLASS)
+                        && ((descriptor && !descriptor.set) || newValue[newValueKey] instanceof Function)) //  || TransformationType === TransformationType.CLASS_TO_CLASS
+                        return "continue";
+                }
+                if (!this_1.options.enableCircularCheck || !this_1.isCircular(subValue)) {
+                    var transformKey = this_1.transformationType === TransformationType.PLAIN_TO_CLASS ? newValueKey : key;
+                    var finalValue = void 0;
+                    if (this_1.transformationType === TransformationType.CLASS_TO_PLAIN) {
+                        // Get original value
+                        finalValue = value[transformKey];
+                        // Apply custom transformation
+                        finalValue = this_1.applyCustomTransformations(finalValue, targetType, transformKey, value, this_1.transformationType);
+                        // If nothing change, it means no custom transformation was applied, so use the subValue.
+                        finalValue = (value[transformKey] === finalValue) ? subValue : finalValue;
+                        // Apply the default transformation
+                        finalValue = this_1.transform(subSource, finalValue, type, arrayType_1, isSubValueMap, level + 1);
+                    }
+                    else {
+                        finalValue = this_1.transform(subSource, subValue, type, arrayType_1, isSubValueMap, level + 1);
+                        finalValue = this_1.applyCustomTransformations(finalValue, targetType, transformKey, value, this_1.transformationType);
+                    }
+                    if (newValue instanceof Map) {
+                        newValue.set(newValueKey, finalValue);
+                    }
+                    else {
+                        newValue[newValueKey] = finalValue;
+                    }
+                }
+                else if (this_1.transformationType === TransformationType.CLASS_TO_CLASS) {
+                    var finalValue = subValue;
+                    finalValue = this_1.applyCustomTransformations(finalValue, targetType, key, value, this_1.transformationType);
+                    if (newValue instanceof Map) {
+                        newValue.set(newValueKey, finalValue);
+                    }
+                    else {
+                        newValue[newValueKey] = finalValue;
+                    }
+                }
+            };
+            var this_1 = this;
+            // traverse over keys
+            for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
+                var key = keys_1[_i];
+                _loop_1(key);
+            }
+            if (this.options.enableCircularCheck) {
+                this.recursionStack.delete(value);
+            }
+            return newValue;
+        }
+        else {
+            return value;
+        }
+    };
+    TransformOperationExecutor.prototype.applyCustomTransformations = function (value, target, key, obj, transformationType) {
+        var _this = this;
+        var metadatas = storage.defaultMetadataStorage.findTransformMetadatas(target, key, this.transformationType);
+        // apply versioning options
+        if (this.options.version !== undefined) {
+            metadatas = metadatas.filter(function (metadata) {
+                if (!metadata.options)
+                    return true;
+                return _this.checkVersion(metadata.options.since, metadata.options.until);
+            });
+        }
+        // apply grouping options
+        if (this.options.groups && this.options.groups.length) {
+            metadatas = metadatas.filter(function (metadata) {
+                if (!metadata.options)
+                    return true;
+                return _this.checkGroups(metadata.options.groups);
+            });
+        }
+        else {
+            metadatas = metadatas.filter(function (metadata) {
+                return !metadata.options || !metadata.options.groups || !metadata.options.groups.length;
+            });
+        }
+        metadatas.forEach(function (metadata) {
+            value = metadata.transformFn(value, obj, transformationType);
+        });
+        return value;
+    };
+    // preventing circular references
+    TransformOperationExecutor.prototype.isCircular = function (object) {
+        return this.recursionStack.has(object);
+    };
+    TransformOperationExecutor.prototype.getReflectedType = function (target, propertyName) {
+        if (!target)
+            return undefined;
+        var meta = storage.defaultMetadataStorage.findTypeMetadata(target, propertyName);
+        return meta ? meta.reflectedType : undefined;
+    };
+    TransformOperationExecutor.prototype.getKeys = function (target, object) {
+        var _this = this;
+        // determine exclusion strategy
+        var strategy = storage.defaultMetadataStorage.getStrategy(target);
+        if (strategy === "none")
+            strategy = this.options.strategy || "exposeAll"; // exposeAll is default strategy
+        // get all keys that need to expose
+        var keys = [];
+        if (strategy === "exposeAll") {
+            if (object instanceof Map) {
+                keys = Array.from(object.keys());
+            }
+            else {
+                keys = Object.keys(object);
+            }
+        }
+        if (!this.options.ignoreDecorators && target) {
+            // add all exposed to list of keys
+            var exposedProperties = storage.defaultMetadataStorage.getExposedProperties(target, this.transformationType);
+            if (this.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                exposedProperties = exposedProperties.map(function (key) {
+                    var exposeMetadata = storage.defaultMetadataStorage.findExposeMetadata(target, key);
+                    if (exposeMetadata && exposeMetadata.options && exposeMetadata.options.name) {
+                        return exposeMetadata.options.name;
+                    }
+                    return key;
+                });
+            }
+            if (this.options.excludeExtraneousValues) {
+                keys = exposedProperties;
+            }
+            else {
+                keys = keys.concat(exposedProperties);
+            }
+            // exclude excluded properties
+            var excludedProperties_1 = storage.defaultMetadataStorage.getExcludedProperties(target, this.transformationType);
+            if (excludedProperties_1.length > 0) {
+                keys = keys.filter(function (key) {
+                    return excludedProperties_1.indexOf(key) === -1;
+                });
+            }
+            // apply versioning options
+            if (this.options.version !== undefined) {
+                keys = keys.filter(function (key) {
+                    var exposeMetadata = storage.defaultMetadataStorage.findExposeMetadata(target, key);
+                    if (!exposeMetadata || !exposeMetadata.options)
+                        return true;
+                    return _this.checkVersion(exposeMetadata.options.since, exposeMetadata.options.until);
+                });
+            }
+            // apply grouping options
+            if (this.options.groups && this.options.groups.length) {
+                keys = keys.filter(function (key) {
+                    var exposeMetadata = storage.defaultMetadataStorage.findExposeMetadata(target, key);
+                    if (!exposeMetadata || !exposeMetadata.options)
+                        return true;
+                    return _this.checkGroups(exposeMetadata.options.groups);
+                });
+            }
+            else {
+                keys = keys.filter(function (key) {
+                    var exposeMetadata = storage.defaultMetadataStorage.findExposeMetadata(target, key);
+                    return !exposeMetadata || !exposeMetadata.options || !exposeMetadata.options.groups || !exposeMetadata.options.groups.length;
+                });
+            }
+        }
+        // exclude prefixed properties
+        if (this.options.excludePrefixes && this.options.excludePrefixes.length) {
+            keys = keys.filter(function (key) { return _this.options.excludePrefixes.every(function (prefix) {
+                return key.substr(0, prefix.length) !== prefix;
+            }); });
+        }
+        // make sure we have unique keys
+        keys = keys.filter(function (key, index, self) {
+            return self.indexOf(key) === index;
+        });
+        return keys;
+    };
+    TransformOperationExecutor.prototype.checkVersion = function (since, until) {
+        var decision = true;
+        if (decision && since)
+            decision = this.options.version >= since;
+        if (decision && until)
+            decision = this.options.version < until;
+        return decision;
+    };
+    TransformOperationExecutor.prototype.checkGroups = function (groups) {
+        if (!groups)
+            return true;
+        return this.options.groups.some(function (optionGroup) { return groups.indexOf(optionGroup) !== -1; });
+    };
+    return TransformOperationExecutor;
+}());
+exports.TransformOperationExecutor = TransformOperationExecutor;
+function instantiateArrayType(arrayType) {
+    var array = new arrayType();
+    if (!(array instanceof Set) && !("push" in array)) {
+        return [];
+    }
+    return array;
+}
+function testForBuffer() {
+    try {
+        Buffer;
+        return true;
+    }
+    catch (_a) { }
+    return false;
+}
+exports.testForBuffer = testForBuffer;
+
+
+});
+
+unwrapExports(TransformOperationExecutor_1);
+var TransformOperationExecutor_2 = TransformOperationExecutor_1.TransformationType;
+var TransformOperationExecutor_3 = TransformOperationExecutor_1.TransformOperationExecutor;
+var TransformOperationExecutor_4 = TransformOperationExecutor_1.testForBuffer;
+
+var ClassTransformer_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+
+var ClassTransformer = /** @class */ (function () {
+    function ClassTransformer() {
+    }
+    ClassTransformer.prototype.classToPlain = function (object, options) {
+        var executor = new TransformOperationExecutor_1.TransformOperationExecutor(TransformOperationExecutor_1.TransformationType.CLASS_TO_PLAIN, options || {});
+        return executor.transform(undefined, object, undefined, undefined, undefined, undefined);
+    };
+    ClassTransformer.prototype.classToPlainFromExist = function (object, plainObject, options) {
+        var executor = new TransformOperationExecutor_1.TransformOperationExecutor(TransformOperationExecutor_1.TransformationType.CLASS_TO_PLAIN, options || {});
+        return executor.transform(plainObject, object, undefined, undefined, undefined, undefined);
+    };
+    ClassTransformer.prototype.plainToClass = function (cls, plain, options) {
+        var executor = new TransformOperationExecutor_1.TransformOperationExecutor(TransformOperationExecutor_1.TransformationType.PLAIN_TO_CLASS, options || {});
+        return executor.transform(undefined, plain, cls, undefined, undefined, undefined);
+    };
+    ClassTransformer.prototype.plainToClassFromExist = function (clsObject, plain, options) {
+        var executor = new TransformOperationExecutor_1.TransformOperationExecutor(TransformOperationExecutor_1.TransformationType.PLAIN_TO_CLASS, options || {});
+        return executor.transform(clsObject, plain, undefined, undefined, undefined, undefined);
+    };
+    ClassTransformer.prototype.classToClass = function (object, options) {
+        var executor = new TransformOperationExecutor_1.TransformOperationExecutor(TransformOperationExecutor_1.TransformationType.CLASS_TO_CLASS, options || {});
+        return executor.transform(undefined, object, undefined, undefined, undefined, undefined);
+    };
+    ClassTransformer.prototype.classToClassFromExist = function (object, fromObject, options) {
+        var executor = new TransformOperationExecutor_1.TransformOperationExecutor(TransformOperationExecutor_1.TransformationType.CLASS_TO_CLASS, options || {});
+        return executor.transform(fromObject, object, undefined, undefined, undefined, undefined);
+    };
+    ClassTransformer.prototype.serialize = function (object, options) {
+        return JSON.stringify(this.classToPlain(object, options));
+    };
+    /**
+     * Deserializes given JSON string to a object of the given class.
+     */
+    ClassTransformer.prototype.deserialize = function (cls, json, options) {
+        var jsonObject = JSON.parse(json);
+        return this.plainToClass(cls, jsonObject, options);
+    };
+    /**
+     * Deserializes given JSON string to an array of objects of the given class.
+     */
+    ClassTransformer.prototype.deserializeArray = function (cls, json, options) {
+        var jsonObject = JSON.parse(json);
+        return this.plainToClass(cls, jsonObject, options);
+    };
+    return ClassTransformer;
+}());
+exports.ClassTransformer = ClassTransformer;
+
+
+});
+
+unwrapExports(ClassTransformer_1);
+var ClassTransformer_2 = ClassTransformer_1.ClassTransformer;
+
+var TypeMetadata_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+var TypeMetadata = /** @class */ (function () {
+    function TypeMetadata(target, propertyName, reflectedType, typeFunction, options) {
+        this.target = target;
+        this.propertyName = propertyName;
+        this.reflectedType = reflectedType;
+        this.typeFunction = typeFunction;
+        this.options = options;
+    }
+    return TypeMetadata;
+}());
+exports.TypeMetadata = TypeMetadata;
+
+
+});
+
+unwrapExports(TypeMetadata_1);
+var TypeMetadata_2 = TypeMetadata_1.TypeMetadata;
+
+var ExposeMetadata_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+var ExposeMetadata = /** @class */ (function () {
+    function ExposeMetadata(target, propertyName, options) {
+        this.target = target;
+        this.propertyName = propertyName;
+        this.options = options;
+    }
+    return ExposeMetadata;
+}());
+exports.ExposeMetadata = ExposeMetadata;
+
+
+});
+
+unwrapExports(ExposeMetadata_1);
+var ExposeMetadata_2 = ExposeMetadata_1.ExposeMetadata;
+
+var ExcludeMetadata_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+var ExcludeMetadata = /** @class */ (function () {
+    function ExcludeMetadata(target, propertyName, options) {
+        this.target = target;
+        this.propertyName = propertyName;
+        this.options = options;
+    }
+    return ExcludeMetadata;
+}());
+exports.ExcludeMetadata = ExcludeMetadata;
+
+
+});
+
+unwrapExports(ExcludeMetadata_1);
+var ExcludeMetadata_2 = ExcludeMetadata_1.ExcludeMetadata;
+
+var TransformMetadata_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+var TransformMetadata = /** @class */ (function () {
+    function TransformMetadata(target, propertyName, transformFn, options) {
+        this.target = target;
+        this.propertyName = propertyName;
+        this.transformFn = transformFn;
+        this.options = options;
+    }
+    return TransformMetadata;
+}());
+exports.TransformMetadata = TransformMetadata;
+
+
+});
+
+unwrapExports(TransformMetadata_1);
+var TransformMetadata_2 = TransformMetadata_1.TransformMetadata;
+
+var decorators = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+
+
+
+
+
+
+/**
+ * Defines a custom logic for value transformation.
+ */
+function Transform(transformFn, options) {
+    return function (target, key) {
+        var metadata = new TransformMetadata_1.TransformMetadata(target.constructor, key, transformFn, options);
+        storage.defaultMetadataStorage.addTransformMetadata(metadata);
+    };
+}
+exports.Transform = Transform;
+/**
+ * Specifies a type of the property.
+ * The given TypeFunction can return a constructor. A discriminator can be given in the options.
+ */
+function Type(typeFunction, options) {
+    return function (target, key) {
+        var type = Reflect.getMetadata("design:type", target, key);
+        var metadata = new TypeMetadata_1.TypeMetadata(target.constructor, key, type, typeFunction, options);
+        storage.defaultMetadataStorage.addTypeMetadata(metadata);
+    };
+}
+exports.Type = Type;
+/**
+ * Marks property as included in the process of transformation. By default it includes the property for both
+ * constructorToPlain and plainToConstructor transformations, however you can specify on which of transformation types
+ * you want to skip this property.
+ */
+function Expose(options) {
+    return function (object, propertyName) {
+        var metadata = new ExposeMetadata_1.ExposeMetadata(object instanceof Function ? object : object.constructor, propertyName, options || {});
+        storage.defaultMetadataStorage.addExposeMetadata(metadata);
+    };
+}
+exports.Expose = Expose;
+/**
+ * Marks property as excluded from the process of transformation. By default it excludes the property for both
+ * constructorToPlain and plainToConstructor transformations, however you can specify on which of transformation types
+ * you want to skip this property.
+ */
+function Exclude(options) {
+    return function (object, propertyName) {
+        var metadata = new ExcludeMetadata_1.ExcludeMetadata(object instanceof Function ? object : object.constructor, propertyName, options || {});
+        storage.defaultMetadataStorage.addExcludeMetadata(metadata);
+    };
+}
+exports.Exclude = Exclude;
+/**
+ * Transform the object from class to plain object and return only with the exposed properties.
+ */
+function TransformClassToPlain(params) {
+    return function (target, propertyKey, descriptor) {
+        var classTransformer = new ClassTransformer_1.ClassTransformer();
+        var originalMethod = descriptor.value;
+        descriptor.value = function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            var result = originalMethod.apply(this, args);
+            var isPromise = !!result && (typeof result === "object" || typeof result === "function") && typeof result.then === "function";
+            return isPromise ? result.then(function (data) { return classTransformer.classToPlain(data, params); }) : classTransformer.classToPlain(result, params);
+        };
+    };
+}
+exports.TransformClassToPlain = TransformClassToPlain;
+/**
+ * Return the class instance only with the exposed properties.
+ */
+function TransformClassToClass(params) {
+    return function (target, propertyKey, descriptor) {
+        var classTransformer = new ClassTransformer_1.ClassTransformer();
+        var originalMethod = descriptor.value;
+        descriptor.value = function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            var result = originalMethod.apply(this, args);
+            var isPromise = !!result && (typeof result === "object" || typeof result === "function") && typeof result.then === "function";
+            return isPromise ? result.then(function (data) { return classTransformer.classToClass(data, params); }) : classTransformer.classToClass(result, params);
+        };
+    };
+}
+exports.TransformClassToClass = TransformClassToClass;
+/**
+ * Return the class instance only with the exposed properties.
+ */
+function TransformPlainToClass(classType, params) {
+    return function (target, propertyKey, descriptor) {
+        var classTransformer = new ClassTransformer_1.ClassTransformer();
+        var originalMethod = descriptor.value;
+        descriptor.value = function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            var result = originalMethod.apply(this, args);
+            var isPromise = !!result && (typeof result === "object" || typeof result === "function") && typeof result.then === "function";
+            return isPromise ? result.then(function (data) { return classTransformer.plainToClass(classType, data, params); }) : classTransformer.plainToClass(classType, result, params);
+        };
+    };
+}
+exports.TransformPlainToClass = TransformPlainToClass;
+
+
+});
+
+unwrapExports(decorators);
+var decorators_1 = decorators.Transform;
+var decorators_2 = decorators.Type;
+var decorators_3 = decorators.Expose;
+var decorators_4 = decorators.Exclude;
+var decorators_5 = decorators.TransformClassToPlain;
+var decorators_6 = decorators.TransformClassToClass;
+var decorators_7 = decorators.TransformPlainToClass;
+
+var classTransformer_1 = createCommonjsModule(function (module, exports) {
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+Object.defineProperty(exports, "__esModule", { value: true });
+
+var ClassTransformer_2 = ClassTransformer_1;
+exports.ClassTransformer = ClassTransformer_2.ClassTransformer;
+__export(decorators);
+var classTransformer = new ClassTransformer_1.ClassTransformer();
+function classToPlain(object, options) {
+    return classTransformer.classToPlain(object, options);
+}
+exports.classToPlain = classToPlain;
+function classToPlainFromExist(object, plainObject, options) {
+    return classTransformer.classToPlainFromExist(object, plainObject, options);
+}
+exports.classToPlainFromExist = classToPlainFromExist;
+function plainToClass(cls, plain, options) {
+    return classTransformer.plainToClass(cls, plain, options);
+}
+exports.plainToClass = plainToClass;
+function plainToClassFromExist(clsObject, plain, options) {
+    return classTransformer.plainToClassFromExist(clsObject, plain, options);
+}
+exports.plainToClassFromExist = plainToClassFromExist;
+function classToClass(object, options) {
+    return classTransformer.classToClass(object, options);
+}
+exports.classToClass = classToClass;
+function classToClassFromExist(object, fromObject, options) {
+    return classTransformer.classToClassFromExist(object, fromObject, options);
+}
+exports.classToClassFromExist = classToClassFromExist;
+function serialize(object, options) {
+    return classTransformer.serialize(object, options);
+}
+exports.serialize = serialize;
+/**
+ * Deserializes given JSON string to a object of the given class.
+ */
+function deserialize(cls, json, options) {
+    return classTransformer.deserialize(cls, json, options);
+}
+exports.deserialize = deserialize;
+/**
+ * Deserializes given JSON string to an array of objects of the given class.
+ */
+function deserializeArray(cls, json, options) {
+    return classTransformer.deserializeArray(cls, json, options);
+}
+exports.deserializeArray = deserializeArray;
+/**
+ * Enum representing the different transformation types.
+ */
+var TransformationType;
+(function (TransformationType) {
+    TransformationType[TransformationType["PLAIN_TO_CLASS"] = 0] = "PLAIN_TO_CLASS";
+    TransformationType[TransformationType["CLASS_TO_PLAIN"] = 1] = "CLASS_TO_PLAIN";
+    TransformationType[TransformationType["CLASS_TO_CLASS"] = 2] = "CLASS_TO_CLASS";
+})(TransformationType = exports.TransformationType || (exports.TransformationType = {}));
+
+
+});
+
+unwrapExports(classTransformer_1);
+var classTransformer_2 = classTransformer_1.ClassTransformer;
+var classTransformer_3 = classTransformer_1.classToPlain;
+var classTransformer_4 = classTransformer_1.classToPlainFromExist;
+var classTransformer_5 = classTransformer_1.plainToClass;
+var classTransformer_6 = classTransformer_1.plainToClassFromExist;
+var classTransformer_7 = classTransformer_1.classToClass;
+var classTransformer_8 = classTransformer_1.classToClassFromExist;
+var classTransformer_9 = classTransformer_1.serialize;
+var classTransformer_10 = classTransformer_1.deserialize;
+var classTransformer_11 = classTransformer_1.deserializeArray;
+var classTransformer_12 = classTransformer_1.TransformationType;
+
+var actionData = /** @class */ (function () {
+    function actionData() {
+        this.events = [];
+    }
+    return actionData;
+}());
 var ActionHook = /** @class */ (function (_super) {
     __extends(ActionHook, _super);
-    function ActionHook() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function ActionHook(provider) {
+        var _this = _super.call(this, provider) || this;
+        _this.observer = new MutationObserver(function (mutations, observer) {
+            mutations.forEach(function (mutation) {
+                _this.nodeBindActionHandler(mutation.target);
+            });
+        });
+        _this.observer.observe(window.document, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ["action-data"]
+        });
+        return _this;
     }
+    /**
+     * 遍历当前突变的节点的子节点，所有存在action-data属性的节点挂载对应事件的监听
+     * @param node
+     * @param serializer
+     */
+    ActionHook.prototype.nodeBindActionHandler = function (node) {
+        var _this = this;
+        node.childNodes && node.childNodes.forEach(function (node) {
+            _this.nodeBindActionHandler(node);
+        });
+        var attributes = node.attributes || [];
+        for (var i = 0, len = attributes.length; i < len; ++i) {
+            var attr = void 0;
+            if (attributes instanceof NamedNodeMap) {
+                attr = attributes.item(i);
+            }
+            else {
+                attr = attributes[i];
+            }
+            if (attr && attr.name === 'action-data') {
+                var aData = classTransformer_5(actionData, JSON.parse(attr.value));
+                if (aData instanceof actionData) {
+                    aData.events.forEach(function (event) {
+                        _this.watch(node, event);
+                    });
+                }
+            }
+        }
+    };
     ActionHook.prototype.getCurrentElement = function (target) {
         var r = target.outerHTML.match("<.+?>");
         return r && r[0] || "";
@@ -1659,6 +2682,31 @@ var ActionHook = /** @class */ (function (_super) {
                 x: evt.x,
                 y: evt.y
             });
+        }
+        else if (evt instanceof DragEvent) {
+            this.provider.track({
+                msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                ms: "action",
+                ml: "info",
+                at: evt.type,
+                el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
+                x: evt.x,
+                y: evt.y
+            });
+        }
+        else if (evt instanceof TouchEvent) {
+            for (var len = evt.changedTouches.length, i = 0; i < len; ++i) {
+                this.provider.track({
+                    msg: "" + evt.type,
+                    ms: "action",
+                    ml: "info",
+                    at: evt.type,
+                    el: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : undefined,
+                    x: evt.changedTouches[i].clientX,
+                    y: evt.changedTouches[i].clientY,
+                    c: len > 1 ? i : undefined
+                });
+            }
         }
         else if (evt instanceof FocusEvent) {
             this.provider.track({
@@ -1683,42 +2731,26 @@ var ActionHook = /** @class */ (function (_super) {
                 msg: evt.inputType + " " + evt.data,
                 ms: "action",
                 ml: "info",
-                at: evt.type,
-                key: evt.data || ""
+                at: evt.type
+            });
+        }
+        else {
+            this.provider.track({
+                msg: "" + evt,
+                ms: "action",
+                ml: "info",
+                at: evt.type
             });
         }
     };
-    ActionHook.prototype.watch = function () {
-        var e_1, _a;
-        try {
-            for (var actions_1 = __values(actions), actions_1_1 = actions_1.next(); !actions_1_1.done; actions_1_1 = actions_1.next()) {
-                var action = actions_1_1.value;
-                on(action, this.listener.bind(this));
-            }
+    ActionHook.prototype.watch = function (selector, event) {
+        if (!selector || !event) {
+            throw new Error("[ActionHook.watch] arguments with somethine error, start watch failed");
         }
-        catch (e_1_1) { e_1 = { error: e_1_1 }; }
-        finally {
-            try {
-                if (actions_1_1 && !actions_1_1.done && (_a = actions_1.return)) _a.call(actions_1);
-            }
-            finally { if (e_1) throw e_1.error; }
-        }
+        selector && selector.addEventListener(event, this.listener.bind(this));
     };
-    ActionHook.prototype.unwatch = function () {
-        var e_2, _a;
-        try {
-            for (var actions_2 = __values(actions), actions_2_1 = actions_2.next(); !actions_2_1.done; actions_2_1 = actions_2.next()) {
-                var action = actions_2_1.value;
-                off(action, this.listener.bind(this));
-            }
-        }
-        catch (e_2_1) { e_2 = { error: e_2_1 }; }
-        finally {
-            try {
-                if (actions_2_1 && !actions_2_1.done && (_a = actions_2.return)) _a.call(actions_2);
-            }
-            finally { if (e_2) throw e_2.error; }
-        }
+    ActionHook.prototype.unwatch = function (selector, event) {
+        selector && selector.removeEventListener(event, this.listener.bind(this));
     };
     return ActionHook;
 }(AbstractHook));
@@ -1821,8 +2853,9 @@ var PerformanceHook = /** @class */ (function (_super) {
 }(AbstractHook));
 
 var HooksFactory = /** @class */ (function () {
-    function HooksFactory() {
+    function HooksFactory(provider) {
         this.hooks = new Map();
+        this.provider = provider;
     }
     HooksFactory.prototype.reigster = function (key, hook) {
         var it = this.hooks.keys();
@@ -1832,31 +2865,39 @@ var HooksFactory = /** @class */ (function () {
                 throw TypeError("the hook type \"" + key + "\" already exists\uFF01");
             }
         }
-        this.hooks.set(key, hook);
+        this.hooks.set(key, new hook(this.provider));
         return this;
     };
     HooksFactory.prototype.watch = function (key) {
+        var args = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            args[_i - 1] = arguments[_i];
+        }
         var _a;
         if (!this.hooks.has(key)) {
             throw TypeError("hook type \"" + key + "\" does not exist, please register first\uFF01");
         }
-        (_a = this.hooks.get(key)) === null || _a === void 0 ? void 0 : _a.watch();
+        (_a = this.hooks.get(key)) === null || _a === void 0 ? void 0 : _a.watch(args);
         return this;
     };
     HooksFactory.prototype.unwatch = function (key) {
+        var args = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            args[_i - 1] = arguments[_i];
+        }
         var _a;
         if (!this.hooks.has(key)) {
             throw TypeError("hook type \"" + key + "\" does not exist, please register first\uFF01");
         }
-        (_a = this.hooks.get(key)) === null || _a === void 0 ? void 0 : _a.unwatch();
+        (_a = this.hooks.get(key)) === null || _a === void 0 ? void 0 : _a.unwatch(args);
         return this;
     };
-    HooksFactory.prototype.initlize = function (provider) {
-        this.reigster("error", new ErrorHook(provider));
-        this.reigster("uncaught", new UncaughtHook(provider));
-        this.reigster("action", new ActionHook(provider));
-        this.reigster("spa", new SPARouterHook(provider));
-        this.reigster("performance", new PerformanceHook(provider));
+    HooksFactory.prototype.initlize = function () {
+        this.reigster("error", ErrorHook);
+        this.reigster("uncaught", UncaughtHook);
+        this.reigster("action", ActionHook);
+        this.reigster("spa", SPARouterHook);
+        this.reigster("performance", PerformanceHook);
         return this;
     };
     return HooksFactory;
@@ -1867,7 +2908,7 @@ var MonitorCenter = /** @class */ (function () {
         this.consumers = [];
         this.store = new Store(appName);
         this.provider = new MonitorProvider(this.store);
-        this.hooks = new HooksFactory().initlize(this.provider);
+        this.hooks = new HooksFactory(this.provider).initlize();
         pv(this.provider);
     }
     MonitorCenter.prototype.start = function (period, size) {

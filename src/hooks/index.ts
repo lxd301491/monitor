@@ -27,19 +27,19 @@ export class HooksFactory {
     return this;
   }
 
-  public watch(key: string): HooksFactory {
+  public watch(key: string, ...args: any): HooksFactory {
     if (!this.hooks.has(key)) {
       throw TypeError(`hook type "${key}" does not exist, please register first！`);
     }
-    this.hooks.get(key)?.watch();
+    this.hooks.get(key)?.watch(args);
     return this;
   }
 
-  public unwatch(key: string): HooksFactory {
+  public unwatch(key: string, ...args: any): HooksFactory {
     if (!this.hooks.has(key)) {
       throw TypeError(`hook type "${key}" does not exist, please register first！`);
     }
-    this.hooks.get(key)?.unwatch();
+    this.hooks.get(key)?.unwatch(args);
     return this;
   }
 

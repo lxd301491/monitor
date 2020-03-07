@@ -1,5 +1,3 @@
-export const actions : any[] = ["click", "input", "blur"];
-
 export type Infos = msgInfo | performanceInfo | envInfo | errorInfo | actionInfo | pvInfo;
 
 export type EmitType = "image" | "fetch" | "beacon" | "custom";
@@ -116,7 +114,9 @@ export interface actionInfo extends msgInfo {
   // 鼠标或者手指横坐标
   x?: number,
   // 鼠标或者手指纵坐标
-  y?: number
+  y?: number,
+  // 多个手指触发时，第几个
+  c?: number
 }
 
 export interface uploadParams {

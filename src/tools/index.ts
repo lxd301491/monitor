@@ -174,28 +174,18 @@ export function getConnection () {
   }
 }
 
-export function on<K extends keyof WindowEventMap>(event: K, listener: (this: Window, ev: WindowEventMap[K]) => any, remove?: boolean) {
-  if (window.addEventListener) {
-    window.addEventListener(event, function eventHandle(ev: WindowEventMap[K]) {
-      remove && window.removeEventListener(event, eventHandle, true);
-      listener.call(this, ev)
-    }, true) 
-  }
-  if (window.attachEvent) {
-    window.attachEvent("on" + event, function eventHandle(this: Window, ev: WindowEventMap[K]) {
-      remove && window.detachEvent("on" + event, eventHandle);
-      listener.call(this, ev);
-    })
-  }
+export function on<K extends keyof WindowEventMap>(event: K, listener: (this: Window, ev: WindowEventMap[K]) => any) {
+  window.addEventListener && window.addEventListener(event, function eventHandle(ev: WindowEventMap[K]) {
+    listener.call(this, ev)
+  }, true) 
+  window.attachEvent && window.attachEvent("on" + event, function eventHandle(this: Window, ev: WindowEventMap[K]) {
+    listener.call(this, ev);
+  })
 }
 
 export function off<K extends keyof WindowEventMap>(event: K, listener: (this: Window, ev: WindowEventMap[K]) => any) {
-  if (window.removeEventListener) {
-    window.removeEventListener(event, listener);
-  } 
-  if (window.detachEvent) {
-    window.detachEvent(event, listener);
-  }
+  window.removeEventListener && window.removeEventListener(event, listener);
+  window.detachEvent && window.detachEvent(event, listener);
 }
 
 // 自定义事件，并dispatch
