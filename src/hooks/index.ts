@@ -31,7 +31,7 @@ export class HooksFactory {
     if (!this.hooks.has(key)) {
       throw TypeError(`hook type "${key}" does not exist, please register first！`);
     }
-    this.hooks.get(key)?.watch(args);
+    this.hooks.get(key)?.watch(...args);
     return this;
   }
 
@@ -39,7 +39,7 @@ export class HooksFactory {
     if (!this.hooks.has(key)) {
       throw TypeError(`hook type "${key}" does not exist, please register first！`);
     }
-    this.hooks.get(key)?.unwatch(args);
+    this.hooks.get(key)?.unwatch(...args);
     return this;
   }
 

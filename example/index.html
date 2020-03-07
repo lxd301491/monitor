@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Document</title>
-    <script src="../dist/monitor.js"></script>
+    <script src="../dist/monitor.js" ></script>
   </head>
   <body>
     <!-- <img src="http://www.baidu.com/1.gif"> -->
     <div id="div1">
-      <input id="input1" type="text" action-data='{"events":["click","input"]}'/>
+      <input id="input1" type="text" action-data="{'events':['click','input']}"/>
     </div>
   </body>
   <script>
@@ -21,9 +21,11 @@
     center.hooks.watch("uncaught");
     center.hooks.watch("performance");
     center.hooks.watch("spa");
-    function throwError() {
-      throw new Error("123123");
-    }
-    throwError();
+
+    center.hooks.watch("action", document.querySelector("#div1"), "click");
+
+    setTimeout(function () {
+      center.hooks.unwatch("action", document.querySelector("#div1"), "click");
+    }, 5000);
   </script>
 </html>

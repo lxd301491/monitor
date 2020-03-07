@@ -1,13 +1,20 @@
 import { AbstractHook } from "./AbstractHook";
 import { MonitorProvider } from "../MonitorProvider";
-import { plainToClass } from "class-transformer";
+
 
 class actionData<K extends keyof GlobalEventHandlersEventMap>{
   public events: K[] = [];
 }
 
+class NodeEventHandlerMap {
+  node: Node;
+  event: string;
+  handler: EventListenerObject;
+}
+
 export class ActionHook extends AbstractHook {
   private observer: MutationObserver;
+  private handlerMap: NodeEventHandlerMap[] = [];
 
   constructor (provider: MonitorProvider) {
     super(provider);
@@ -20,7 +27,7 @@ export class ActionHook extends AbstractHook {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ["action-data"]
+      attributeFilter: ["action-events"]
     });
   }
 
@@ -41,8 +48,8 @@ export class ActionHook extends AbstractHook {
       } else {
         attr = attributes[i];
       }
-      if (attr && attr.name === 'action-data') {
-        let aData = plainToClass(actionData, JSON.parse(attr.value));
+      if (attr && attr.name === 'action-events') {
+        let aData = attr.value.splite(",");
         if (aData instanceof actionData) {
           aData.events.forEach(event => {
             this.watch(node, <keyof GlobalEventHandlersEventMap>event);
@@ -57,6 +64,7 @@ export class ActionHook extends AbstractHook {
     return r && r[0] || "";
   }
   
+
   private listener<K extends keyof GlobalEventHandlersEventMap>(evt: GlobalEventHandlersEventMap[K]) {
     if (evt instanceof MouseEvent) {
       this.provider.track({
@@ -124,14 +132,26 @@ export class ActionHook extends AbstractHook {
     }
   }
 
-  watch<K extends keyof GlobalEventHandlersEventMap>(selector: Node, event: K): void {
+  watch<K extends keyof GlobalEventHandlersEventMap>(selector: Node, event: K, ...args: any[]): void {
     if (!selector || !event) {
       throw new Error("[ActionHook.watch] arguments with somethine error, start watch failed");
     }
-    selector && selector.addEventListener(event, this.listener.bind(this));
+    var handler = new NodeEventHandlerMap();
+    handler.node = selector;
+    handler.event = event;
+    handler.handler = this.listener.bind(this, args);
+    this.handlerMap.push(handler);
+    selector && selector.addEventListener(event, handler.handler);
   }
 
   unwatch<K extends keyof GlobalEventHandlersEventMap>(selector: Node, event: K): void {
-    selector && selector.removeEventListener(event, this.listener.bind(this));
+    for (let i = this.handlerMap.length-1; i>= 0; i--){
+      if (this.handlerMap[i].node == selector && this.handlerMap[i].event == event) {
+        if (selector) {
+          selector.removeEventListener(event, this.handlerMap[i].handler);
+        }
+        this.handlerMap.splice(i, 1);
+      }
+    }
   }
 }

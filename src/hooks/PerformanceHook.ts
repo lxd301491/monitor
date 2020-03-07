@@ -1,7 +1,15 @@
 import { AbstractHook } from "./AbstractHook";
 import { perforPage, on, off } from "../tools";
+import { MonitorProvider } from "../MonitorProvider";
 
 export class PerformanceHook extends AbstractHook {
+  private handler: any;
+
+  constructor (provider: MonitorProvider) {
+    super(provider);
+    this.handler = this.listener.bind(this);
+  }
+
   private listener (evt: Event) {
     setTimeout(() => {
       this.provider.track({
@@ -14,10 +22,10 @@ export class PerformanceHook extends AbstractHook {
   }
   
   watch(): void {
-    on("load", this.listener.bind(this));
+    on("load", this.handler);
   }
 
   unwatch(): void {
-    off("load", this.listener.bind(this));
+    off("load", this.handler);
   }
 }

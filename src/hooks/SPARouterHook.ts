@@ -1,8 +1,18 @@
 import { AbstractHook } from "./AbstractHook";
 import { replace, reduction } from "../decorators/LifeCycle";
 import { parseUrl, dispatchCustomEvent, on, parseHash, off, pv } from "../tools";
+import { MonitorProvider } from "../MonitorProvider";
 
 export class SPARouterHook extends AbstractHook {
+  private hashchangeHandler: any;
+  private historystatechangedHandler: any;
+
+  constructor (provider: MonitorProvider) {
+    super(provider);
+    this.hashchangeHandler = this.handleHashchange.bind(this);
+    this.historystatechangedHandler = this.handleHistorystatechange.bind(this);
+  }
+
   hackState(e: 'pushState' | 'replaceState') {
     replace(history, e, function (data: any, title: string, url?: string | null) {
       // 调用pushState或replaceState时hack Onpopstate
@@ -46,14 +56,15 @@ export class SPARouterHook extends AbstractHook {
   watch(): void {
     this.hackState('pushState');
     this.hackState('replaceState');
-    on('hashchange', this.handleHashchange.bind(this));
-    on('historystatechanged', this.handleHistorystatechange.bind(this));
+    
+    on('hashchange', this.hashchangeHandler);
+    on('historystatechanged', this.historystatechangedHandler);
   }
 
   unwatch(): void {
     this.dehackState('pushState');
     this.dehackState('replaceState');
-    off('hashchange', this.handleHashchange.bind(this));
-    off('historystatechanged', this.handleHistorystatechange.bind(this));
+    off('hashchange', this.hashchangeHandler);
+    off('historystatechanged', this.historystatechangedHandler);
   }
 }
