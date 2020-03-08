@@ -119,6 +119,9 @@
         track: {
             before: function () { },
             after: function () { }
+        },
+        actionHandler: {
+            before: function () { }
         }
     };
     function before(target, methodName, descriptor) {
@@ -164,7 +167,7 @@
             top._replace_center_ = {};
         var container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
         if (!container[methodName]) {
-            container[methodName] = target[methodName];
+            container[methodName] = target[methodName] ? target[methodName] : null;
             target[methodName] = replacer;
         }
     }
@@ -176,10 +179,10 @@
         if (!top._replace_center_)
             top._replace_center_ = {};
         var container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
-        if (top._replace_center_[methodName]) {
-            target[methodName] = container[methodName];
-            delete container[methodName];
+        if (container[methodName] == "null") {
+            target[methodName] = null;
         }
+        delete container[methodName];
     }
 
     /**
@@ -306,7 +309,7 @@
         };
     }
     function on(event, listener) {
-        window.addEventListener && window.addEventListener(event, listener, true);
+        window.addEventListener && window.addEventListener(event, listener);
         window.attachEvent && window.attachEvent("on" + event, listener);
     }
     function off(event, listener) {
@@ -12609,44 +12612,6 @@
             _this.handler = _this.listener.bind(_this);
             return _this;
         }
-        ErrorHook.prototype.onError = function (event, source, lineno, colno, error) {
-            setTimeout(function () {
-                var stack;
-                //不一定所有浏览器都支持col参数
-                if (!!error && !!error.stack) {
-                    //如果浏览器有堆栈信息
-                    //直接使用
-                    stack = error.stack.toString();
-                }
-                else if (!!arguments.callee) {
-                    //尝试通过callee拿堆栈信息
-                    var ext = [];
-                    var f = arguments.callee.caller, c = 3;
-                    //这里只拿三层堆栈信息
-                    while (f && (--c > 0)) {
-                        ext.push(f.toString());
-                        if (f === f.caller) {
-                            break; //如果有环
-                        }
-                        f = f.caller;
-                    }
-                    stack = ext.join(",");
-                }
-                if (event || error) {
-                    //把data上报到后台！
-                    this.provider.track({
-                        file: source,
-                        line: lineno,
-                        col: colno,
-                        stack: stack,
-                        msg: error.message,
-                        ms: "error",
-                        ml: "error"
-                    });
-                }
-            }, 0);
-            return true;
-        };
         ErrorHook.prototype.listener = function (evt) {
             evt.stopPropagation();
             evt.preventDefault();
@@ -12666,13 +12631,43 @@
                     ml: "error"
                 });
             }
+            else {
+                var stack = "";
+                if (!!evt.error && !!evt.error.stack) {
+                    // 如果浏览器有堆栈信息 直接使用
+                    stack = evt.error.stack.toString();
+                }
+                else if (arguments) {
+                    // 尝试通过callee拿堆栈信息
+                    var ext = [];
+                    // eslint-disable-next-line no-caller
+                    var f = arguments.callee.caller;
+                    var c = 3;
+                    // 这里只拿三层堆栈信息
+                    while (f && --c > 0) {
+                        ext.push(f.toString());
+                        if (f === f.caller) {
+                            break; // 如果有环
+                        }
+                        f = f.caller;
+                    }
+                    stack = ext.join(",");
+                }
+                this.provider.track({
+                    file: evt.filename,
+                    line: evt.lineno,
+                    col: evt.colno,
+                    stack: stack,
+                    msg: evt.message,
+                    ms: "error",
+                    ml: "error"
+                });
+            }
         };
         ErrorHook.prototype.watch = function () {
-            replace(window, "onerror", this.onError);
             on("error", this.handler);
         };
         ErrorHook.prototype.unwatch = function () {
-            reduction(window, "onerror");
             off("error", this.handler);
         };
         return ErrorHook;
@@ -12755,10 +12750,10 @@
             var r = target.outerHTML.match("<.+?>");
             return r && r[0] || "";
         };
-        ActionHook.prototype.listener = function (args, evt) {
+        ActionHook.prototype.actionHandler = function (args, evt) {
             if (evt instanceof MouseEvent) {
                 this.provider.track({
-                    msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                    msg: args[0] + " " + args[1],
                     ms: "action",
                     ml: "info",
                     at: evt.type,
@@ -12769,7 +12764,7 @@
             }
             else if (evt instanceof DragEvent) {
                 this.provider.track({
-                    msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                    msg: args[0] + " " + args[1],
                     ms: "action",
                     ml: "info",
                     at: evt.type,
@@ -12781,7 +12776,7 @@
             else if (evt instanceof TouchEvent) {
                 for (var len = evt.changedTouches.length, i = 0; i < len; ++i) {
                     this.provider.track({
-                        msg: "" + evt.type,
+                        msg: args[0] + " " + args[1],
                         ms: "action",
                         ml: "info",
                         at: evt.type,
@@ -12794,7 +12789,7 @@
             }
             else if (evt instanceof FocusEvent) {
                 this.provider.track({
-                    msg: evt.target instanceof HTMLElement ? this.getCurrentElement(evt.target) : "",
+                    msg: args[0] + " " + args[1],
                     ms: "action",
                     ml: "info",
                     at: evt.type,
@@ -12803,7 +12798,7 @@
             }
             else if (evt instanceof KeyboardEvent) {
                 this.provider.track({
-                    msg: evt.type + " " + evt.key,
+                    msg: args[0] + " " + args[1],
                     ms: "action",
                     ml: "info",
                     at: evt.type,
@@ -12812,7 +12807,7 @@
             }
             else if (evt instanceof InputEvent) {
                 this.provider.track({
-                    msg: evt.inputType + " " + evt.data,
+                    msg: args[0] + " " + args[1],
                     ms: "action",
                     ml: "info",
                     at: evt.type
@@ -12820,7 +12815,7 @@
             }
             else {
                 this.provider.track({
-                    msg: "" + evt,
+                    msg: args[0] + " " + args[1],
                     ms: "action",
                     ml: "info",
                     at: evt.type
@@ -12838,7 +12833,7 @@
             var handler = new NodeEventHandlerMap();
             handler.node = selector;
             handler.event = event;
-            handler.handler = this.listener.bind(this, args);
+            handler.handler = this.actionHandler.bind(this, args);
             this.handlerMap.push(handler);
             selector && selector.addEventListener(event, handler.handler);
         };
@@ -12852,6 +12847,9 @@
                 }
             }
         };
+        __decorate([
+            before
+        ], ActionHook.prototype, "actionHandler", null);
         return ActionHook;
     }(AbstractHook));
 

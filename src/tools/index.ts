@@ -175,7 +175,7 @@ export function getConnection () {
 }
 
 export function on<K extends keyof WindowEventMap>(event: K, listener: (this: Window, ev: WindowEventMap[K]) => any) {
-  window.addEventListener && window.addEventListener(event, listener, true) 
+  window.addEventListener && window.addEventListener(event, listener) 
   window.attachEvent && window.attachEvent("on" + event, listener)
 }
 

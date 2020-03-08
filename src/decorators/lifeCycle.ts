@@ -6,6 +6,9 @@ export const lifeCycle: ILiftCycle = {
   track: {
     before: () => {},
     after: () => {}
+  },
+  actionHandler: {
+    before: () => {}
   }
 }
 
@@ -35,8 +38,9 @@ export function replace(target: any, methodName: string, replacer: Function, nam
   } 
   if (!top._replace_center_) top._replace_center_ = {};
   let container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
+
   if (!container[methodName]) {
-    container[methodName] = target[methodName];
+    container[methodName] = target[methodName] ? target[methodName] : null;
     target[methodName] = replacer;
   }
 }
@@ -48,8 +52,8 @@ export function reduction(target: any, methodName: string, namespace?: string) {
   } 
   if (!top._replace_center_) top._replace_center_ = {};
   let container = namespace ? top._replace_center_[namespace] ? top._replace_center_[namespace] : top._replace_center_[namespace] = {} : top._replace_center_;
-  if (top._replace_center_[methodName]) {
-    target[methodName] = container[methodName];
-    delete container[methodName];
+  if (container[methodName] == "null") {
+    target[methodName] = null;
   }
+  delete container[methodName];
 }

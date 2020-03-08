@@ -10,7 +10,7 @@
   <body>
     <!-- <img src="http://www.baidu.com/1.gif"> -->
     <div id="div1">
-      <input id="input1" type="text" jr-event="click;input" jr-msg="點擊了輸入框;輸入內容" jr-area="首頁輸入框;首頁輸入框" />
+      <input id="input1" type="text" jr-event="touch;input" jr-msg="點擊了輸入框;輸入內容" jr-area="首頁輸入框;首頁輸入框" />
     </div>
   </body>
   <script>
@@ -21,8 +21,19 @@
     center.hooks.watch("uncaught");
     center.hooks.watch("performance");
     center.hooks.watch("spa");
-
-    center.hooks.watch("action", document.querySelector("body"), "click", "msg", "jskdfj");
+    
+    //center.hooks.unwatch("error");
+    
+    Monitor.lifeCycle.actionHandler.before = function (args, event) {
+      console.log(args);
+    }
+    // setInterval(function () {
+    //   Promise.reject("123");
+    // }, 1000);
+    // setInterval(function () {
+    //   throw new Error("321")
+    // }, 1000);
+    
 
   </script>
 </html>

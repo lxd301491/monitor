@@ -84,7 +84,7 @@ export class ActionHook extends AbstractHook {
   }
   
   @before
-  private listener<K extends keyof GlobalEventHandlersEventMap>(args: any[], evt: GlobalEventHandlersEventMap[K] ) {
+  private actionHandler<K extends keyof GlobalEventHandlersEventMap>(args: any[], evt: GlobalEventHandlersEventMap[K] ) {
     if (evt instanceof MouseEvent) {
       this.provider.track({
           msg: `${args[0]} ${args[1]}`,
@@ -158,7 +158,7 @@ export class ActionHook extends AbstractHook {
     var handler = new NodeEventHandlerMap();
     handler.node = selector;
     handler.event = event;
-    handler.handler = this.listener.bind(this, args);
+    handler.handler = this.actionHandler.bind(this, args);
     this.handlerMap.push(handler);
     selector && selector.addEventListener(event, handler.handler);
   }
