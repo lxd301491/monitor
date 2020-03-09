@@ -12687,7 +12687,7 @@
         __extends(ActionHook, _super);
         function ActionHook(provider) {
             var _this = _super.call(this, provider) || this;
-            _this.handlerMap = [];
+            _this.handlerMap = new NodeEventHandlerMap();
             _this.observer = new MutationObserver(function (mutations, observer) {
                 mutations.forEach(function (mutation) {
                     _this.nodeBindActionHandler(mutation.target);
@@ -12830,21 +12830,18 @@
             if (!selector || !event) {
                 throw new Error("[ActionHook.watch] arguments with somethine error, start watch failed");
             }
-            var handler = new NodeEventHandlerMap();
-            handler.node = selector;
-            handler.event = event;
-            handler.handler = this.actionHandler.bind(this, args);
-            this.handlerMap.push(handler);
-            selector && selector.addEventListener(event, handler.handler);
+            if (!this.handlerMap[event]) {
+                this.handlerMap[event] = new Map();
+            }
+            if (this.handlerMap[event].get(selector))
+                return;
+            this.handlerMap[event].set(selector, this.actionHandler.bind(this, args));
+            selector && selector.addEventListener(event, this.handlerMap[event].get(selector));
         };
         ActionHook.prototype.unwatch = function (selector, event) {
-            for (var i = this.handlerMap.length - 1; i >= 0; i--) {
-                if (this.handlerMap[i].node == selector && this.handlerMap[i].event == event) {
-                    if (selector) {
-                        selector.removeEventListener(event, this.handlerMap[i].handler);
-                    }
-                    this.handlerMap.splice(i, 1);
-                }
+            if (this.handlerMap[event] && this.handlerMap[event].get(selector)) {
+                selector.removeEventListener(event, this.handlerMap[event].get(selector));
+                this.handlerMap[event].delete(selector);
             }
         };
         __decorate([

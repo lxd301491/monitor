@@ -10,7 +10,7 @@
   <body>
     <!-- <img src="http://www.baidu.com/1.gif"> -->
     <div id="div1">
-      <input id="input1" type="text" jr-event="touch;input" jr-msg="點擊了輸入框;輸入內容" jr-area="首頁輸入框;首頁輸入框" />
+      <input id="input1" type="text" jr-event="touchstart;input" jr-msg="點擊了輸入框;輸入內容" jr-area="首頁輸入框;首頁輸入框" />
     </div>
   </body>
   <script>
@@ -33,6 +33,9 @@
     // setInterval(function () {
     //   throw new Error("321")
     // }, 1000);
+    setInterval(function () {
+      history.pushState({}, "123", `file:///Users/pingan/Desktop/workspacegit/others/monitor/example/index.html#${new Date().getTime()}`)
+    }, 1000);
     
 
   </script>

@@ -9,14 +9,12 @@ class ActionEvent {
 }
 
 class NodeEventHandlerMap {
-  node: Node;
-  event: string;
-  handler: EventListenerObject;
+  [event: string]: Map<Node, EventListenerObject>
 }
 
 export class ActionHook extends AbstractHook {
   private observer: MutationObserver;
-  private handlerMap: NodeEventHandlerMap[] = [];
+  private handlerMap: NodeEventHandlerMap = new NodeEventHandlerMap();
 
   constructor (provider: MonitorProvider) {
     super(provider);
@@ -155,22 +153,18 @@ export class ActionHook extends AbstractHook {
     if (!selector || !event) {
       throw new Error("[ActionHook.watch] arguments with somethine error, start watch failed");
     }
-    var handler = new NodeEventHandlerMap();
-    handler.node = selector;
-    handler.event = event;
-    handler.handler = this.actionHandler.bind(this, args);
-    this.handlerMap.push(handler);
-    selector && selector.addEventListener(event, handler.handler);
+    if (!this.handlerMap[event]) {
+      this.handlerMap[event] = new Map();
+    }
+    if (this.handlerMap[event].get(selector)) return;
+    this.handlerMap[event].set(selector, this.actionHandler.bind(this, args))
+    selector && selector.addEventListener(event, this.handlerMap[event].get(selector));
   }
 
   unwatch<K extends keyof GlobalEventHandlersEventMap>(selector: Node, event: K): void {
-    for (let i = this.handlerMap.length-1; i>= 0; i--){
-      if (this.handlerMap[i].node == selector && this.handlerMap[i].event == event) {
-        if (selector) {
-          selector.removeEventListener(event, this.handlerMap[i].handler);
-        }
-        this.handlerMap.splice(i, 1);
-      }
+    if (this.handlerMap[event] && this.handlerMap[event].get(selector)) {
+      selector.removeEventListener(event, this.handlerMap[event].get(selector));
+      this.handlerMap[event].delete(selector);
     }
   }
 }
