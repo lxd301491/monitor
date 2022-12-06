@@ -44,7 +44,7 @@
     "class-transformer": "^0.2.3",
     "localforage": "^1.7.3",
     "pako": "^1.0.10",
-    "qs": "^6.9.1",
+    "qs": "^6.9.7",
     "reflect-metadata": "^0.1.13"
   },
   "repository": {
